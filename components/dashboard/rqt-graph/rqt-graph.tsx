@@ -31,8 +31,10 @@ import TopicNode from "./topic-node";
 import { RQTGraphControls } from "./rqt-graph-controls";
 import { RQTGraphDetailsPanel } from "./rqt-graph-details-panel";
 import type { RQTNodeData } from "@/lib/rqt-reactflow/rqt-graph-to-reactflow";
-import { Loader2, Network } from "lucide-react";
+import { AlertCircle, ArrowRight, Link, Loader2, Network } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { SpinnerCustom } from "@/components/ui/spinner";
 
 export function RQTGraph() {
   const nodeTypes = useMemo(
@@ -177,9 +179,29 @@ export function RQTGraph() {
   // Loading state
   if (isLoading && graphNodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-600 mb-4" />
-        <p className="text-sm text-gray-600">Loading graph data...</p>
+      <div className="flex flex-col items-center justify-center py-12 px-4">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md">
+          <div className="flex items-start gap-3">
+            <div className="flex flex-col items-center justify-center">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <h3 className="text-sm font-semibold text-amber-900">
+                  Loading ROS Topics...
+                </h3>
+              </div>
+              <p className="text-sm text-amber-700 mt-1">
+                Please wait while we load the ROS topics...
+              </p>
+              <SpinnerCustom />
+              <Link href="/dashboard/settings/ros-connection">
+                <Button variant="outline" className="mt-4">
+                  Go to Settings
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
