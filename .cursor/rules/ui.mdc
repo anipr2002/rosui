@@ -1,0 +1,27 @@
+---
+alwaysApply: false
+---
+
+UI card design spec (short)
+Overall: Minimal, no heavy shadows. rounded-xl, border (1px), shadow-none.
+Header (CardHeader):
+Tinted background with matching border.
+Status colors: green (connected), amber (connecting), red (error), gray (default).
+No top padding on the card; header sits flush with rounded corners.
+Title uses text-base and status-tinted text; optional small description beneath.
+Left-aligned icon uses the same status color.
+Content (CardContent):
+Clean white background.
+Standard spacing: px-6 py-4 inside content.
+Inputs/buttons use neutral styling; only status-specific elements get color.
+Buttons:
+Primary action neutral by default; destructive/negative uses red outline.
+Loading uses spinner icon; keep label short.
+Badges/State chips:
+Small badge on the right of header; mirrors status color.
+Variants:
+Status card: dynamic border and header color per state.
+Configuration card: mirrors current status for header/border; body stays neutral.
+Accessibility:
+Sufficient contrast for tinted headers.
+Clear focus styles on interactive elements.
