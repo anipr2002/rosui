@@ -1,6 +1,6 @@
 import type { Node, Edge } from 'reactflow'
 import type { TFTransform } from '@/store/tf-store'
-import type { TreeStructure } from './tf-tree-builder'
+import type { TreeStructure } from '@/lib/tf-tree-reactflow/tf-tree-builder'
 
 export interface TFNodeData {
   frame: string

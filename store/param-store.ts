@@ -149,11 +149,6 @@ export const useParamsStore = create<ParamsState>((set, get) => ({
               console.error(`Error processing parameter value for ${name}:`, error)
               reject(error)
             }
-          },
-          (error: any) => {
-            const errorMsg = error?.error || error?.message || 'Failed to get parameter'
-            console.error(`Failed to get parameter ${name}:`, errorMsg)
-            reject(new Error(errorMsg))
           }
         )
       } catch (error) {
@@ -206,11 +201,6 @@ export const useParamsStore = create<ParamsState>((set, get) => ({
               console.error(`Error updating cache for ${name}:`, error)
               reject(error)
             }
-          },
-          (error: any) => {
-            const errorMsg = error?.error || error?.message || 'Failed to set parameter'
-            console.error(`Failed to set parameter ${name}:`, errorMsg)
-            reject(new Error(errorMsg))
           }
         )
       } catch (error) {
@@ -263,11 +253,6 @@ export const useParamsStore = create<ParamsState>((set, get) => ({
               console.error(`Error removing parameter ${name} from cache:`, error)
               reject(error)
             }
-          },
-          (error: any) => {
-            const errorMsg = error?.error || error?.message || 'Failed to delete parameter'
-            console.error(`Failed to delete parameter ${name}:`, errorMsg)
-            reject(new Error(errorMsg))
           }
         )
       } catch (error) {

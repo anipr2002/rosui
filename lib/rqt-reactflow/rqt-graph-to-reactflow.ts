@@ -1,4 +1,5 @@
 import type { Node, Edge } from 'reactflow'
+import { MarkerType } from 'reactflow'
 import type { GraphStructure, GraphNode, GraphTopic } from './rqt-graph-builder'
 
 export interface RQTNodeData {
@@ -62,7 +63,7 @@ export function convertToReactFlow (
       animated: false,
       style: edgeStyle,
       markerEnd: {
-        type: 'arrowclosed',
+        type: MarkerType.ArrowClosed,
         width: 15,
         height: 15,
         color: edgeStyle.stroke
