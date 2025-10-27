@@ -52,16 +52,22 @@ export function TopicInfoTab({ topicName, topicType }: TopicInfoTabProps) {
     <div className="space-y-4">
       {/* Basic Info */}
       <div className="space-y-3">
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-sm font-medium text-gray-600">Topic Name</span>
-          <span className="text-sm font-mono text-gray-900">{topicName}</span>
+        <div className="flex justify-between items-start gap-3 py-2 border-b">
+          <span className="text-sm font-medium text-gray-600 flex-shrink-0">
+            Topic Name
+          </span>
+          <span className="text-sm font-mono text-gray-900 text-right break-all">
+            {topicName}
+          </span>
         </div>
 
-        <div className="flex justify-between items-center py-2 border-b">
-          <span className="text-sm font-medium text-gray-600">
+        <div className="flex justify-between items-start gap-3 py-2 border-b">
+          <span className="text-sm font-medium text-gray-600 flex-shrink-0">
             Message Type
           </span>
-          <span className="text-sm font-mono text-gray-900">{topicType}</span>
+          <span className="text-sm font-mono text-gray-900 text-right break-all">
+            {topicType}
+          </span>
         </div>
       </div>
 

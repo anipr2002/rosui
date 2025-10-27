@@ -12,6 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TopicInfoTab } from "./topic-info-tab";
 import { TopicSubscribeTab } from "./topic-subscribe-tab";
 import { TopicPublishTab } from "./topic-publish-tab";
@@ -90,11 +96,12 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
       badges.push(
         <Badge
           key="subscribe"
-          className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200"
+          className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 text-xs"
         >
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            Subscribed
+            <span className="hidden sm:inline">Subscribed</span>
+            <span className="sm:hidden">Sub</span>
           </div>
         </Badge>
       );
@@ -104,11 +111,12 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
       badges.push(
         <Badge
           key="publish"
-          className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200"
+          className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200 text-xs"
         >
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
-            Publishing
+            <span className="hidden sm:inline">Publishing</span>
+            <span className="sm:hidden">Pub</span>
           </div>
         </Badge>
       );
@@ -118,7 +126,7 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
       badges.push(
         <Badge
           key="inactive"
-          className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200"
+          className="bg-gray-100 text-gray-700 hover:bg-gray-100 border-gray-200 text-xs"
         >
           Inactive
         </Badge>
@@ -130,6 +138,16 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
 
   const colors = getStatusColors();
 
+  // Determine color variant for tooltip based on status
+  const getTooltipColor = () => {
+    if (isSubscribed && isPublishing) return "green"; // Mixed state uses green
+    if (isSubscribed) return "green";
+    if (isPublishing) return "purple";
+    return "amber"; // Default/inactive
+  };
+
+  const tooltipColor = getTooltipColor();
+
   return (
     <Card
       className={`shadow-none pt-0 rounded-xl ${colors.border}`}
@@ -139,24 +157,52 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
         className={`${colors.headerBg} ${colors.border} border-b rounded-t-xl pt-6`}
         style={colors.customHeaderStyle}
       >
-        <div className="flex items-start gap-3">
-          <Radio className={`h-5 w-5 mt-0.5 ${colors.iconColor}`} />
-          <div className="flex-1 min-w-0">
-            <CardTitle className={`text-base ${colors.headerText} break-words`}>
-              {topicName}
-            </CardTitle>
-            <CardDescription
-              className={`mt-1 text-xs ${colors.descriptionText} font-mono break-words`}
-            >
-              {topicType}
-            </CardDescription>
+        <TooltipProvider>
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-start sm:gap-4">
+            <Radio
+              className={`h-5 w-5 mt-0.5 ${colors.iconColor} flex-shrink-0`}
+            />
+            <div className="min-w-0 overflow-hidden space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle
+                    className={`text-sm sm:text-base ${colors.headerText} truncate cursor-help block`}
+                    title={topicName}
+                  >
+                    {topicName}
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs"
+                  colorVariant={tooltipColor}
+                >
+                  <p className="break-words">{topicName}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardDescription
+                    className={`text-xs ${colors.descriptionText} font-mono truncate cursor-help block`}
+                    title={topicType}
+                  >
+                    {topicType}
+                  </CardDescription>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs"
+                  colorVariant={tooltipColor}
+                >
+                  <p className="break-words font-mono text-xs">{topicType}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex flex-col gap-1 items-end flex-shrink-0">
+              {getStatusBadges()}
+            </div>
           </div>
-        </div>
-        <CardAction>
-          <div className="flex flex-col gap-1 items-end">
-            {getStatusBadges()}
-          </div>
-        </CardAction>
+        </TooltipProvider>
       </CardHeader>
 
       <CardContent className="px-6 py-4">

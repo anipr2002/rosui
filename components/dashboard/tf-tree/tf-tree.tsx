@@ -13,13 +13,13 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useTFStore } from "@/store/tf-store";
 import { useRosStore } from "@/store/ros-store";
-import { buildTreeStructure } from "@/lib/tf-tree-builder";
-import { convertToReactFlow } from "@/lib/tf-to-reactflow";
-import { getLayoutedElements } from "@/lib/layout-tf-tree";
+import { buildTreeStructure } from "@/lib/tf-tree-reactflow/tf-tree-builder";
+import { convertToReactFlow } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
+import { getLayoutedElements } from "@/lib/tf-tree-reactflow/layout-tf-tree";
 import TFNode from "./tf-node";
 import { TFControls } from "./tf-controls";
 import { TFDetailsPanel } from "./tf-details-panel";
-import type { TFNodeData } from "@/lib/tf-to-reactflow";
+import type { TFNodeData } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
 import { Loader2, GitBranch } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 

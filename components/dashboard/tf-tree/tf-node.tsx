@@ -3,8 +3,11 @@
 import React, { memo } from "react";
 import { Handle, Position } from "reactflow";
 import type { NodeProps } from "reactflow";
-import type { TFNodeData } from "@/lib/tf-to-reactflow";
-import { getFreshnessColor, getFreshnessLabel } from "@/lib/tf-to-reactflow";
+import type { TFNodeData } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
+import {
+  getFreshnessColor,
+  getFreshnessLabel,
+} from "@/lib/tf-tree-reactflow/tf-to-reactflow";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,

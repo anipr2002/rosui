@@ -7,3 +7,6 @@ export type { ActionInfo, ActionDefinition, ActionGoal, GoalStatus } from './act
 export { useTFStore } from './tf-store'
 export type { TFTransform } from './tf-store'
 
+export { useRQTGraphStore } from './rqt-graph-store'
+export type { NodeInfo, TopicInfo, ConnectionInfo } from './rqt-graph-store'
+

@@ -66,8 +66,8 @@ const data = {
       icon: BookOpen,
       items: [
         {
-          title: "3D Visualization",
-          url: "#",
+          title: "RQT Graph",
+          url: "/dashboard/visualization/rqt-graph",
         },
         {
           title: "Map Viewer",

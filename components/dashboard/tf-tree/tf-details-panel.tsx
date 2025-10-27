@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import type { TFNodeData } from "@/lib/tf-to-reactflow";
+import type { TFNodeData } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Copy, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { toast } from "sonner";
-import { getFramePath } from "@/lib/tf-tree-builder";
-import type { TreeStructure } from "@/lib/tf-tree-builder";
+import { getFramePath } from "@/lib/tf-tree-reactflow/tf-tree-builder";
+import type { TreeStructure } from "@/lib/tf-tree-reactflow/tf-tree-builder";
 
 interface TFDetailsPanelProps {
   selectedNode: TFNodeData | null;
