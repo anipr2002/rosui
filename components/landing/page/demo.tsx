@@ -101,7 +101,7 @@ function DemoServiceCard({
   };
 
   return (
-    <Card className="shadow-none pt-0 rounded-xl border-teal-200 w-[416px]">
+    <Card className="shadow-none pt-0 rounded-xl border-teal-200 w-full sm:w-[416px]">
       <CardHeader className="bg-teal-50 border-teal-200 border-b rounded-t-xl pt-6">
         <TooltipProvider>
           <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-start sm:gap-4">
@@ -470,7 +470,7 @@ function DemoTopicCard({
 
   return (
     <Card
-      className={`shadow-none pt-0 rounded-xl w-[416px] ${colors.border}`}
+      className={`shadow-none pt-0 rounded-xl w-full sm:w-[416px] ${colors.border}`}
       style={colors.customBorderStyle}
     >
       <CardHeader
