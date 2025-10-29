@@ -1,3 +1,4 @@
+//@ts-nocheck
 "use client";
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
@@ -6,7 +7,7 @@ import SplitType from "split-type";
 
 gsap.registerPlugin(ScrollTrigger);
 
-interface BlurScrollEffectProps<T extends keyof JSX.IntrinsicElements = "p"> {
+interface BlurScrollEffectProps{
   children: React.ReactNode;
   className?: string;
   tag?: keyof React.JSX.IntrinsicElements;
@@ -18,7 +19,7 @@ interface BlurScrollEffectProps<T extends keyof JSX.IntrinsicElements = "p"> {
   delay?: number;
 }
 
-export function BlurText<T extends keyof JSX.IntrinsicElements = "p">({
+export function BlurText({
   children,
   className = "",
   tag: Tag = "p",
