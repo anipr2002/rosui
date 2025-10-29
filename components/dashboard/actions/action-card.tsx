@@ -10,6 +10,12 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ActionInfoTab } from "./action-info-tab";
 import { ActionGoalTab } from "./action-goal-tab";
 import { Activity, Info, Target } from "lucide-react";
@@ -27,30 +33,60 @@ export function ActionCard({ actionName, actionType }: ActionCardProps) {
   const isLoading =
     isLoadingActions || isLoadingDefinitions.get(actionType) || false;
 
-  const borderColor = isLoading ? "border-blue-300" : "border-gray-200";
-  const headerBg = isLoading ? "bg-blue-50" : "bg-gray-50";
-  const headerText = isLoading ? "text-blue-900" : "text-gray-900";
-  const descriptionText = isLoading ? "text-blue-800" : "text-gray-700";
-  const iconColor = isLoading ? "text-blue-600" : "text-gray-400";
+  const borderColor = isLoading ? "border-blue-300" : "border-indigo-200";
+  const headerBg = isLoading ? "bg-blue-50" : "bg-indigo-50";
+  const headerText = isLoading ? "text-blue-900" : "text-indigo-900";
+  const descriptionText = isLoading ? "text-blue-800" : "text-indigo-700";
+  const iconColor = isLoading ? "text-blue-600" : "text-indigo-400";
+
+  const tooltipColor = isLoading ? "blue" : "indigo";
 
   return (
     <Card className={`shadow-none pt-0 pb-0 rounded-xl ${borderColor}`}>
       <CardHeader
         className={`${headerBg} ${borderColor} border-b rounded-t-xl pt-6`}
       >
-        <div className="flex items-start gap-3">
-          <Activity className={`h-5 w-5 mt-0.5 ${iconColor}`} />
-          <div className="flex-1 min-w-0">
-            <CardTitle className={`text-base ${headerText} break-words`}>
-              {actionName}
-            </CardTitle>
-            <CardDescription
-              className={`mt-1 text-xs ${descriptionText} font-mono break-words`}
-            >
-              {actionType}
-            </CardDescription>
+        <TooltipProvider>
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 items-start sm:gap-4">
+            <Activity className={`h-5 w-5 mt-0.5 ${iconColor} flex-shrink-0`} />
+            <div className="min-w-0 overflow-hidden space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle
+                    className={`text-sm sm:text-base ${headerText} truncate cursor-help block`}
+                    title={actionName}
+                  >
+                    {actionName}
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs"
+                  colorVariant={tooltipColor}
+                >
+                  <p className="break-words">{actionName}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardDescription
+                    className={`text-xs ${descriptionText} font-mono truncate cursor-help block`}
+                    title={actionType}
+                  >
+                    {actionType}
+                  </CardDescription>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs"
+                  colorVariant={tooltipColor}
+                >
+                  <p className="break-words font-mono text-xs">{actionType}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
-        </div>
+        </TooltipProvider>
       </CardHeader>
 
       <CardContent className="px-6 py-4">

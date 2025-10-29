@@ -12,6 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ParamInfoTab } from "./param-info-tab";
 import { ParamEditTab } from "./param-edit-tab";
 import { ParamWatchTab } from "./param-watch-tab";
@@ -42,12 +48,12 @@ export function ParamCard({ paramName }: ParamCardProps) {
     } else {
       // Default - inactive
       return {
-        border: "border-gray-200",
+        border: "border-cyan-200",
         borderInner: "",
-        headerBg: "bg-gray-50",
-        headerText: "text-gray-900",
-        descriptionText: "text-gray-700",
-        iconColor: "text-gray-400",
+        headerBg: "bg-cyan-50",
+        headerText: "text-cyan-900",
+        descriptionText: "text-cyan-700",
+        iconColor: "text-cyan-400",
       };
     }
   };
@@ -85,31 +91,63 @@ export function ParamCard({ paramName }: ParamCardProps) {
 
   const colors = getStatusColors();
 
+  const tooltipColor = isWatching ? "blue" : "cyan";
+
   return (
     <Card className={`shadow-none pt-0 rounded-xl ${colors.border}`}>
       <CardHeader
         className={`${colors.headerBg} ${colors.border} border-b rounded-t-xl pt-6`}
       >
-        <div className="flex items-start gap-3">
-          <Settings className={`h-5 w-5 mt-0.5 ${colors.iconColor}`} />
-          <div className="flex-1 min-w-0">
-            <CardTitle className={`text-base ${colors.headerText} break-words`}>
-              {paramName}
-            </CardTitle>
-            {param?.type && (
-              <CardDescription
-                className={`mt-1 text-xs ${colors.descriptionText} font-mono break-words`}
-              >
-                Type: {param.type}
-              </CardDescription>
-            )}
+        <TooltipProvider>
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 items-start sm:gap-4">
+            <Settings
+              className={`h-5 w-5 mt-0.5 ${colors.iconColor} flex-shrink-0`}
+            />
+            <div className="min-w-0 overflow-hidden space-y-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <CardTitle
+                    className={`text-sm sm:text-base ${colors.headerText} truncate cursor-help block`}
+                    title={paramName}
+                  >
+                    {paramName}
+                  </CardTitle>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs"
+                  colorVariant={tooltipColor}
+                >
+                  <p className="break-words">{paramName}</p>
+                </TooltipContent>
+              </Tooltip>
+              {param?.type && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardDescription
+                      className={`text-xs ${colors.descriptionText} font-mono truncate cursor-help block`}
+                      title={`Type: ${param.type}`}
+                    >
+                      Type: {param.type}
+                    </CardDescription>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-xs"
+                    colorVariant={tooltipColor}
+                  >
+                    <p className="break-words font-mono text-xs">
+                      Type: {param.type}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+            <div className="flex flex-col gap-1 items-end flex-shrink-0">
+              {getStatusBadges()}
+            </div>
           </div>
-        </div>
-        <CardAction>
-          <div className="flex flex-col gap-1 items-end">
-            {getStatusBadges()}
-          </div>
-        </CardAction>
+        </TooltipProvider>
       </CardHeader>
 
       <CardContent className="px-6 py-4">

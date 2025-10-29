@@ -43,21 +43,31 @@ export function ServiceCallTab({
     // Only initialize after definition is loaded to avoid parser errors
     if (definition && requestJson === "" && !isLoading) {
       const defaultMessage = definition.request.defaultMessage;
-      console.log('Service call tab - defaultMessage:', defaultMessage);
-      console.log('Service call tab - defaultMessage keys:', Object.keys(defaultMessage || {}));
-      console.log('Service call tab - request definition:', definition.request.definition);
+      console.log("Service call tab - defaultMessage:", defaultMessage);
+      console.log(
+        "Service call tab - defaultMessage keys:",
+        Object.keys(defaultMessage || {})
+      );
+      console.log(
+        "Service call tab - request definition:",
+        definition.request.definition
+      );
 
       if (defaultMessage && Object.keys(defaultMessage).length > 0) {
         setRequestJson(JSON.stringify(defaultMessage, null, 2));
       } else {
         // Try to create a basic structure from the definition text
-        console.log('Service call tab - attempting to create structure from definition');
-        const basicStructure = createBasicStructureFromDefinition(definition.request.definition);
+        console.log(
+          "Service call tab - attempting to create structure from definition"
+        );
+        const basicStructure = createBasicStructureFromDefinition(
+          definition.request.definition
+        );
         if (basicStructure && Object.keys(basicStructure).length > 0) {
           setRequestJson(JSON.stringify(basicStructure, null, 2));
         } else {
           // Final fallback to empty object
-          console.log('Service call tab - using fallback empty object');
+          console.log("Service call tab - using fallback empty object");
           setRequestJson("{}");
         }
       }
@@ -68,7 +78,9 @@ export function ServiceCallTab({
   const createBasicStructureFromDefinition = (definitionText: string) => {
     if (!definitionText) return {};
 
-    const lines = definitionText.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+    const lines = definitionText
+      .split("\n")
+      .filter((line) => line.trim() && !line.startsWith("#"));
     const structure: any = {};
 
     for (const line of lines) {
@@ -78,16 +90,22 @@ export function ServiceCallTab({
         const name = parts[1];
 
         // Remove array notation for simplicity
-        let cleanName = name.replace(/\[.*\]/, '');
+        let cleanName = name.replace(/\[.*\]/, "");
         // Remove leading underscore from field name for compatibility
-        cleanName = cleanName.startsWith('_') ? cleanName.substring(1) : cleanName;
+        cleanName = cleanName.startsWith("_")
+          ? cleanName.substring(1)
+          : cleanName;
 
         // Set default values based on type
-        if (type === 'string') {
-          structure[cleanName] = '';
-        } else if (type.includes('int') || type.includes('float') || type.includes('uint')) {
+        if (type === "string") {
+          structure[cleanName] = "";
+        } else if (
+          type.includes("int") ||
+          type.includes("float") ||
+          type.includes("uint")
+        ) {
           structure[cleanName] = 0;
-        } else if (type === 'bool') {
+        } else if (type === "bool") {
           structure[cleanName] = false;
         } else {
           structure[cleanName] = {};

@@ -1,50 +1,57 @@
-'use client'
+"use client";
 
-import React, { useEffect, useState } from 'react'
-import { useActionsStore } from '@/store/action-store'
-import { Button } from '@/components/ui/button'
-import { Loader2, Send, XCircle, CheckCircle, Clock, AlertCircle } from 'lucide-react'
-import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
+import React, { useEffect, useState } from "react";
+import { useActionsStore } from "@/store/action-store";
+import { Button } from "@/components/ui/button";
+import {
+  Loader2,
+  Send,
+  XCircle,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 interface ActionGoalTabProps {
-  actionName: string
-  actionType: string
+  actionName: string;
+  actionType: string;
 }
 
 const STATUS_NAMES: Record<number, string> = {
-  0: 'PENDING',
-  1: 'ACTIVE',
-  2: 'PREEMPTED',
-  3: 'SUCCEEDED',
-  4: 'ABORTED',
-  5: 'REJECTED',
-  6: 'PREEMPTING',
-  7: 'RECALLING',
-  8: 'RECALLED',
-  9: 'LOST',
-}
+  0: "PENDING",
+  1: "ACTIVE",
+  2: "PREEMPTED",
+  3: "SUCCEEDED",
+  4: "ABORTED",
+  5: "REJECTED",
+  6: "PREEMPTING",
+  7: "RECALLING",
+  8: "RECALLED",
+  9: "LOST",
+};
 
 const getStatusColor = (status: number) => {
   switch (status) {
     case 3: // SUCCEEDED
-      return 'bg-green-100 text-green-800 border-green-200'
+      return "bg-green-100 text-green-800 border-green-200";
     case 1: // ACTIVE
     case 6: // PREEMPTING
-      return 'bg-blue-100 text-blue-800 border-blue-200'
+      return "bg-blue-100 text-blue-800 border-blue-200";
     case 4: // ABORTED
     case 5: // REJECTED
     case 9: // LOST
-      return 'bg-red-100 text-red-800 border-red-200'
+      return "bg-red-100 text-red-800 border-red-200";
     case 2: // PREEMPTED
     case 8: // RECALLED
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200'
+      return "bg-gray-100 text-gray-800 border-gray-200";
   }
-}
+};
 
-export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
+export function ActionGoalTab({ actionName, actionType }: ActionGoalTabProps) {
   const {
     getActionDefinition,
     actionDefinitions,
@@ -52,83 +59,86 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
     sendGoal,
     cancelAllGoals,
     activeGoals,
-  } = useActionsStore()
+  } = useActionsStore();
 
-  const [goalMessage, setGoalMessage] = useState<string>('')
-  const [isSending, setIsSending] = useState(false)
-  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false)
+  const [goalMessage, setGoalMessage] = useState<string>("");
+  const [isSending, setIsSending] = useState(false);
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
 
-  const definition = actionDefinitions.get(actionType)
-  const isLoading = isLoadingDefinitions.get(actionType) || false
+  const definition = actionDefinitions.get(actionType);
+  const isLoading = isLoadingDefinitions.get(actionType) || false;
 
   // Get active goals for this action
   const actionGoalsList = Array.from(activeGoals.values()).filter(
     (goal) => goal.actionName === actionName
-  )
+  );
 
   useEffect(() => {
-    if (!hasAttemptedLoad && actionType !== 'unknown') {
-      setHasAttemptedLoad(true)
+    if (!hasAttemptedLoad && actionType !== "unknown") {
+      setHasAttemptedLoad(true);
       getActionDefinition(actionType)
         .then((def) => {
           if (def && def.goal.defaultMessage) {
-            setGoalMessage(JSON.stringify(def.goal.defaultMessage, null, 2))
+            setGoalMessage(JSON.stringify(def.goal.defaultMessage, null, 2));
           }
         })
         .catch((error) => {
-          console.error(`Failed to load action definition for ${actionType}:`, error)
-          toast.error(`Failed to load action definition for ${actionType}`)
-        })
+          console.error(
+            `Failed to load action definition for ${actionType}:`,
+            error
+          );
+          toast.error(`Failed to load action definition for ${actionType}`);
+        });
     }
-  }, [actionType, getActionDefinition, hasAttemptedLoad])
+  }, [actionType, getActionDefinition, hasAttemptedLoad]);
 
   const handleSendGoal = async () => {
     try {
-      setIsSending(true)
-      const parsedGoal = JSON.parse(goalMessage)
-      
-      const goalId = await sendGoal(actionName, actionType, parsedGoal)
-      toast.success('Goal sent successfully', {
+      setIsSending(true);
+      const parsedGoal = JSON.parse(goalMessage);
+
+      const goalId = await sendGoal(actionName, actionType, parsedGoal);
+      toast.success("Goal sent successfully", {
         description: `Goal ID: ${goalId}`,
-      })
+      });
     } catch (error) {
-      console.error('Failed to send goal:', error)
+      console.error("Failed to send goal:", error);
       if (error instanceof SyntaxError) {
-        toast.error('Invalid JSON format', {
-          description: 'Please check your goal message syntax',
-        })
+        toast.error("Invalid JSON format", {
+          description: "Please check your goal message syntax",
+        });
       } else {
-        toast.error('Failed to send goal', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
+        toast.error("Failed to send goal", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
       }
     } finally {
-      setIsSending(false)
+      setIsSending(false);
     }
-  }
+  };
 
   const handleCancelAll = () => {
     try {
-      cancelAllGoals(actionName)
-      toast.success('Cancelled all goals', {
+      cancelAllGoals(actionName);
+      toast.success("Cancelled all goals", {
         description: `All active goals for ${actionName} have been cancelled`,
-      })
+      });
     } catch (error) {
-      console.error('Failed to cancel goals:', error)
-      toast.error('Failed to cancel goals', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
+      console.error("Failed to cancel goals:", error);
+      toast.error("Failed to cancel goals", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
     }
-  }
+  };
 
   const handleResetToDefault = () => {
     if (definition && definition.goal.defaultMessage) {
-      setGoalMessage(JSON.stringify(definition.goal.defaultMessage, null, 2))
-      toast.success('Reset to default goal message')
+      setGoalMessage(JSON.stringify(definition.goal.defaultMessage, null, 2));
+      toast.success("Reset to default goal message");
     }
-  }
+  };
 
-  if (actionType === 'unknown') {
+  if (actionType === "unknown") {
     return (
       <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
         <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
@@ -137,7 +147,7 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
           <p className="mt-1">Cannot send goals without a valid action type.</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (isLoading) {
@@ -146,7 +156,7 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
         <Loader2 className="h-6 w-6 animate-spin text-gray-400 mb-2" />
         <p className="text-xs text-gray-500">Loading action definition...</p>
       </div>
-    )
+    );
   }
 
   if (!definition) {
@@ -158,7 +168,7 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
           <p className="mt-1">Cannot send goals without action definition.</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -246,9 +256,11 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
                   {goal.status && (
                     <Badge
                       variant="outline"
-                      className={`text-xs ${getStatusColor(goal.status.status)}`}
+                      className={`text-xs ${getStatusColor(
+                        goal.status.status
+                      )}`}
                     >
-                      {STATUS_NAMES[goal.status.status] || 'UNKNOWN'}
+                      {STATUS_NAMES[goal.status.status] || "UNKNOWN"}
                     </Badge>
                   )}
                 </div>
@@ -269,7 +281,11 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
                         Feedback ({goal.feedback.length}):
                       </span>
                       <pre className="text-xs bg-white p-2 rounded border mt-1 overflow-x-auto max-h-[100px] overflow-y-auto">
-                        {JSON.stringify(goal.feedback[goal.feedback.length - 1], null, 2)}
+                        {JSON.stringify(
+                          goal.feedback[goal.feedback.length - 1],
+                          null,
+                          2
+                        )}
                       </pre>
                     </div>
                   )}
@@ -303,6 +319,5 @@ export function ActionGoalTab ({ actionName, actionType }: ActionGoalTabProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
-
