@@ -6,7 +6,7 @@ import SplitType from "split-type";
 
 gsap.registerPlugin(ScrollTrigger);
 
-interface BlurScrollEffectProps extends React.HTMLAttributes<HTMLElement> {
+interface BlurScrollEffectProps<T extends keyof JSX.IntrinsicElements = "p"> {
   children: React.ReactNode;
   className?: string;
   tag?: keyof React.JSX.IntrinsicElements;
@@ -18,7 +18,7 @@ interface BlurScrollEffectProps extends React.HTMLAttributes<HTMLElement> {
   delay?: number;
 }
 
-export function BlurText({
+export function BlurText<T extends keyof JSX.IntrinsicElements = "p">({
   children,
   className = "",
   tag: Tag = "p",
