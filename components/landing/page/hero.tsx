@@ -106,28 +106,30 @@ const Hero = () => {
       </div>
 
       {/* Dashboard Image */}
-      <div className="mx-auto mt-16 max-w-7xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]">
-        <div className="[perspective:1200px] [mask-image:linear-gradient(to_right,black_50%,transparent_100%)] -mr-16 pl-16 lg:-mr-56 lg:pl-56">
-          <div className="[transform:rotateX(20deg);]">
-            <div className="lg:h-[44rem] relative skew-x-[.36rad]">
-              <Image
-                className="rounded-[--radius] z-[2] relative border dark:hidden"
-                src="/images/dashboard.png"
-                alt="ROSUI Dashboard"
-                width={2880}
-                height={2074}
-              />
-              <Image
-                className="rounded-[--radius] z-[2] relative hidden border dark:block"
-                src="/images/dashboard.png"
-                alt="ROSUI Dashboard"
-                width={2880}
-                height={2074}
-              />
+      <FadeContent delay={600}>
+        <div className="mx-auto mt-16 max-w-7xl [mask-image:linear-gradient(to_bottom,black_50%,transparent_100%)]">
+          <div className="[perspective:1200px] [mask-image:linear-gradient(to_right,black_50%,transparent_100%)] -mr-16 pl-16 lg:-mr-56 lg:pl-56">
+            <div className="[transform:rotateX(20deg);]">
+              <div className="lg:h-[44rem] relative skew-x-[.36rad]">
+                <Image
+                  className="rounded-[--radius] z-[2] relative border dark:hidden"
+                  src="/images/dashboard.png"
+                  alt="ROSUI Dashboard"
+                  width={2880}
+                  height={2074}
+                />
+                <Image
+                  className="rounded-[--radius] z-[2] relative hidden border dark:block"
+                  src="/images/dashboard.png"
+                  alt="ROSUI Dashboard"
+                  width={2880}
+                  height={2074}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </FadeContent>
     </div>
   );
 };
