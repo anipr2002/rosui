@@ -41,7 +41,16 @@ function TooltipContent({
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content> & {
-  colorVariant?: "amber" | "green" | "purple" | "gray" | "blue" | "red";
+  colorVariant?:
+    | "amber"
+    | "green"
+    | "purple"
+    | "gray"
+    | "blue"
+    | "red"
+    | "indigo"
+    | "cyan"
+    | "teal";
 }) {
   const colorStyles = {
     amber: {
@@ -79,6 +88,24 @@ function TooltipContent({
       border: "border-red-300",
       text: "text-red-900",
       arrow: "fill-red-50",
+    },
+    indigo: {
+      bg: "bg-indigo-50",
+      border: "border-indigo-300",
+      text: "text-indigo-900",
+      arrow: "fill-indigo-50",
+    },
+    cyan: {
+      bg: "bg-cyan-50",
+      border: "border-cyan-300",
+      text: "text-cyan-900",
+      arrow: "fill-cyan-50",
+    },
+    teal: {
+      bg: "bg-teal-50",
+      border: "border-teal-300",
+      text: "text-teal-900",
+      arrow: "fill-teal-50",
     },
   };
 

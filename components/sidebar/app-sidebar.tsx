@@ -32,9 +32,9 @@ import Image from "next/image";
 
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    name: "Anirudh",
+    email: "hey@navana.studio",
+    avatar: "/logo.svg",
   },
   navMain: [
     {
