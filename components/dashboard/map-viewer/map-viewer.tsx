@@ -44,46 +44,48 @@ export function MapViewer({ width = 800, height = 600 }: MapViewerProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const loadScript = (src: string, globalName: string) => {
+      return new Promise((resolve, reject) => {
+        if ((window as any)[globalName]) {
+          resolve((window as any)[globalName]);
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = () => {
+          if ((window as any)[globalName]) {
+            resolve((window as any)[globalName]);
+          } else {
+            reject(
+              new Error(`Script loaded but global '${globalName}' not found`)
+            );
+          }
+        };
+        script.onerror = () =>
+          reject(new Error(`Failed to load script: ${src}`));
+        document.body.appendChild(script);
+      });
+    };
+
     const loadLibraries = async () => {
       try {
-        // Load EventEmitter2
-        const { EventEmitter2 } = await import("eventemitter2");
-        window.EventEmitter2 = EventEmitter2;
+        // Load EventEmitter3 from CDN and alias it as EventEmitter2 for ros2d compatibility
+        const EventEmitter3 = await loadScript(
+          "https://unpkg.com/eventemitter3@latest/dist/eventemitter3.umd.min.js",
+          "EventEmitter3"
+        );
+        window.EventEmitter2 = EventEmitter3 as any;
 
-        // Load EaselJS - it's a global library, not a proper ES module
-        // Use dynamic require to avoid TypeScript module checking
-        if (typeof require !== "undefined") {
-          window.createjs = require("easeljs");
-        } else {
-          // In browser environment, easeljs should be loaded via script tag
-          // But if we're here, try a workaround
-          try {
-            // @ts-ignore - easeljs types don't export as module
-            const easeljsModule = await import("easeljs");
-            if (easeljsModule?.default) {
-              window.createjs = easeljsModule.default;
-            }
-          } catch {
-            // If import fails, assume it's already loaded via script tag or will be
-            // ros2d might also try to load it
-          }
-        }
-
-        // Check if createjs is now available
-        if (!window.createjs) {
-          setViewerError("EaselJS library not properly loaded");
-          return;
-        }
-
-        // Load ros2d - it creates a global ROS2D object
-        // @ts-ignore - ros2d doesn't have proper type declarations for the build file
-        await import("ros2d/build/ros2d");
-
-        // Check if ROS2D is now available
-        if (!window.ROS2D) {
-          setViewerError("ROS2D library not properly loaded");
-          return;
-        }
+        // Load EaselJS and ros2d from reliable CDNs
+        await loadScript(
+          "https://code.createjs.com/1.0.0/easeljs.min.js",
+          "createjs"
+        );
+        await loadScript(
+          "https://cdn.jsdelivr.net/npm/ros2d@0.10.0/build/ros2d.min.js",
+          "ROS2D"
+        );
       } catch (err) {
         const errorMsg =
           err instanceof Error

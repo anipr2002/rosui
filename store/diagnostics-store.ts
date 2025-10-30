@@ -74,7 +74,7 @@ interface DiagnosticsState {
   verifyTopics: () => Promise<{ topicName: string; exists: boolean; subscribed: boolean; error?: string }[]>
 }
 
-const DIAGNOSTIC_MESSAGE_TYPE = 'diagnostic_msgs/DiagnosticArray'
+const DIAGNOSTIC_MESSAGE_TYPE = 'diagnostic_msgs/msg/DiagnosticArray'
 
 export const useDiagnosticsStore = create<DiagnosticsState>()(
   persist(
