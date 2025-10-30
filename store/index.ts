@@ -25,3 +25,6 @@ export type { DiagnosticLevel, DiagnosticStatus, DiagnosticArray, ProcessedDiagn
 export { useMapStore } from './map-store'
 export type { MapMetadata, NavigationGoal } from './map-store'
 
+export { useLogStore } from './log-store'
+export type { LogLevel, LogEntry, LogMessage, FilterState } from './log-store'
+

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Folder,
   MoreHorizontal,
@@ -61,7 +62,7 @@ export function NavProjects({
           return (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton asChild>
-                <a
+                <Link
                   href={item.url}
                   className={cn(
                     "transition-colors",
@@ -80,7 +81,7 @@ export function NavProjects({
                     )}
                   />
                   <span>{item.name}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

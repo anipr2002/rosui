@@ -95,7 +95,7 @@ const data = {
         },
         {
           title: "Logs",
-          url: "#",
+          url: "/dashboard/monitoring/logs",
         },
         {
           title: "Performance",
