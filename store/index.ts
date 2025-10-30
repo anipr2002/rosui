@@ -22,3 +22,6 @@ export type { ParamInfo, WatchedParamInfo, ValueRecord } from './param-store'
 export { useDiagnosticsStore } from './diagnostics-store'
 export type { DiagnosticLevel, DiagnosticStatus, DiagnosticArray, ProcessedDiagnosticStatus, NodeMetrics } from './diagnostics-store'
 
+export { useMapStore } from './map-store'
+export type { MapMetadata, NavigationGoal } from './map-store'
+

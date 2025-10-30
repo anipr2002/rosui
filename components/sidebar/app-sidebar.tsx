@@ -72,7 +72,7 @@ const data = {
         },
         {
           title: "Map Viewer",
-          url: "#",
+          url: "/dashboard/visualization/map-viewer",
         },
         {
           title: "Camera Feeds",
