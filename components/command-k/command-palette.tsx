@@ -125,7 +125,7 @@ const navigationData: NavigationGroup[] = [
     items: [
       {
         title: "Diagnostics",
-        url: "#",
+        url: "/dashboard/monitoring/diagnostics",
         icon: Bot,
         description: "System health and diagnostics",
         keywords: ["diagnostics", "health", "status", "monitoring"],

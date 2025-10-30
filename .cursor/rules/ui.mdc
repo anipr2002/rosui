@@ -2,26 +2,219 @@
 alwaysApply: false
 ---
 
-UI card design spec (short)
+UI card design spec (comprehensive)
+
+=== CARD STRUCTURE ===
 Overall: Minimal, no heavy shadows. rounded-xl, border (1px), shadow-none.
+Always use: `shadow-none pt-0 rounded-xl` on Card component.
+Card padding removed from top (pt-0) to allow header to sit flush with rounded corners.
+
 Header (CardHeader):
-Tinted background with matching border.
-Status colors: green (connected), amber (connecting), red (error), gray (default).
-No top padding on the card; header sits flush with rounded corners.
-Title uses text-base and status-tinted text; optional small description beneath.
-Left-aligned icon uses the same status color.
+- Tinted background with matching border color.
+- Class pattern: `bg-{color}-50 border-{color}-{shade} border-b rounded-t-xl pt-6`
+- No top padding on card itself; header has pt-6 for internal spacing.
+- Border on bottom of header separates from content (border-b).
+- Header sits flush with card's rounded corners (rounded-t-xl).
+
+Title & Description:
+- Title: `text-base` (or `text-sm sm:text-base` for responsive), status-tinted text color.
+- Description: `text-xs`, slightly muted status color, optional font-mono for code-like text.
+- Grid layout for header content: `grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 sm:gap-4`
+- Icon: `h-5 w-5 mt-0.5` aligned left, uses same status color.
+- Title/description can be wrapped in Tooltip for truncation handling with `cursor-help`.
+
 Content (CardContent):
-Clean white background.
-Standard spacing: px-6 py-4 inside content.
-Inputs/buttons use neutral styling; only status-specific elements get color.
-Buttons:
-Primary action neutral by default; destructive/negative uses red outline.
-Loading uses spinner icon; keep label short.
-Badges/State chips:
-Small badge on the right of header; mirrors status color.
-Variants:
-Status card: dynamic border and header color per state.
-Configuration card: mirrors current status for header/border; body stays neutral.
-Accessibility:
-Sufficient contrast for tinted headers.
-Clear focus styles on interactive elements.
+- Clean white background (default).
+- Standard spacing: `px-6 py-4` inside content.
+- Inputs/buttons use neutral styling; only status-specific elements get color.
+- Can have nested components like Tabs, Accordion, etc.
+
+=== STATUS COLOR SCHEMES ===
+Connection Status:
+- green: Connected (border-green-300, bg-green-50, text-green-900)
+- amber: Connecting/Warning (border-amber-300, bg-amber-50, text-amber-900)
+- red: Error (border-red-300, bg-red-50, text-red-900)
+- gray: Default/Disconnected (border-gray-200, bg-gray-50, text-gray-900)
+
+Topic Card Status (multi-state):
+- green: Subscribed (border-green-300, bg-green-50, text-green-900)
+- purple: Publishing (border-purple-300, bg-purple-50, text-purple-900)
+- amber: Inactive (border-amber-200, bg-amber-50, text-amber-900)
+- Mixed states use gradient or neutral colors
+
+Graph Visualizations:
+- teal: RQT Graph (border-teal-200, bg-teal-50, text-teal-900/800)
+- purple: Details Panel (border-purple-200, bg-purple-50, text-purple-900)
+
+=== BADGES & STATE INDICATORS ===
+Pattern: Badge positioned on right side of header or inline.
+Status Badge Structure:
+- Container: `bg-{color}-100 text-{color}-700 hover:bg-{color}-100 border-{color}-200`
+- Size: `text-xs` for compact badges
+- Animated indicators: `h-2 w-2 rounded-full bg-{color}-500 animate-pulse` for active states
+- Icon badges: Use `h-3 w-3` icons with `animate-spin` for loading states
+- Layout: Flex with gap-1.5 for icon + text
+
+Badge Variants:
+- Status badge: Color-matched with pulse indicator
+- Outline badge: `variant="outline"` for secondary information
+- Topic type badges: Publisher (purple), Subscriber (green), System (gray)
+
+=== BUTTONS ===
+Primary Actions:
+- Default: `bg-gray-200 border-gray-500 border-1 text-gray-500 hover:bg-gray-300 hover:text-gray-700`
+- Status-specific: `bg-{color}-200 border-{color}-500 border-1 hover:bg-{color}-500 hover:text-white text-{color}-500`
+- Example: Subscribe (green), Publish (purple)
+
+Destructive Actions:
+- Pattern: `variant="outline" border-red-{shade} text-red-600 hover:bg-red-50 hover:text-red-700`
+- Used for: Unsubscribe, Disconnect, Stop actions
+
+Loading States:
+- Use `Loader2` icon with `animate-spin`
+- Disable button during loading
+- Keep label concise: "Connecting...", "Loading..."
+
+Icon Buttons:
+- Size: `size="sm"` or `h-4 w-4` icons
+- Ghost variant for secondary actions
+- Tooltips recommended for icon-only buttons
+
+=== TABS ===
+Container: Tabs component inside CardContent.
+TabsList: `grid w-full grid-cols-{count}` for equal-width tabs.
+TabsTrigger:
+- Size: `text-xs` for compact interfaces
+- Icons: `h-3 w-3 mr-1` before text
+- Commonly used icons: Radio (info), Eye (subscribe), Send (publish)
+
+TabsContent:
+- Margin: `mt-4` from tabs list
+- Contains tab-specific components
+
+=== ACCORDION & COLLAPSIBLE ===
+AccordionItem:
+- Trigger: `text-sm hover:no-underline`
+- Icon + text layout in trigger
+- Icons: FileCode, Users, BarChart3, etc. (`h-4 w-4 text-gray-600`)
+
+AccordionContent:
+- Spacing: `space-y-2` or `space-y-3` for content sections
+- Code blocks: `bg-gray-50 border rounded-lg p-3` with `font-mono text-xs`
+- Empty states: `border-2 border-dashed rounded-lg p-3` or `p-4` with centered text
+
+Collapsible:
+- Button trigger with chevron icons (ChevronDown/ChevronRight)
+- CollapsibleContent with `mt-2` spacing
+
+=== INPUTS & FORMS ===
+Input:
+- Background: `bg-white` for contrast
+- Standard styling with focus states
+- Disabled when connection active or operation in progress
+
+Textarea:
+- Pattern: `w-full min-h-[200px] p-3 font-mono text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-{color}-500 bg-white`
+- Used for JSON editing in publish tabs
+- Error states: Red border and error message below
+
+Label:
+- Pattern: `text-sm font-medium`
+- Optional tooltip icon (`Info h-3.5 w-3.5`) for help text
+- Help text: `text-xs text-gray-500` below input
+
+Switch:
+- Pattern: `data-[state=checked]:bg-indigo-500` or status color
+- Layout: `flex items-center justify-between` with label + switch
+
+=== TOOLTIPS ===
+TooltipProvider wraps interactive elements.
+Pattern:
+- TooltipTrigger: `asChild` prop for wrapping other elements
+- TooltipContent: `max-w-xs` or `max-w-sm`, `colorVariant={statusColor}`
+- Used for: Truncated text (topic names, types), Icon buttons, Info icons
+- Icons: `Info h-3.5 w-3.5 text-gray-400 hover:text-gray-600 cursor-help`
+
+=== EMPTY STATES ===
+Container: `bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 max-w-md text-center`
+Icon: Large icon (h-12 w-12) with muted color (text-gray-400)
+Text:
+- Title: `text-sm font-semibold text-gray-900 mb-2`
+- Description: `text-sm text-gray-500`
+
+Loading States:
+- Pattern: Card with `bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md`
+- Icon + message + SpinnerCustom component
+- Action button linking to settings/connection page
+
+=== PAGE LAYOUT ===
+Container: `w-full max-w-7xl mx-auto py-8` (or max-w-4xl for narrower pages)
+Header Section:
+- Title: `text-3xl font-bold tracking-tight`
+- Description: `text-muted-foreground mt-2`
+- Spacing: `mb-8` before content
+
+Content Grid:
+- Topics/Services: `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`
+- Single column: Standard flow
+
+=== GRAPH VISUALIZATIONS ===
+Controls Card:
+- Pattern: Teal theme (`border-teal-200`, `bg-teal-50`, `text-teal-900`)
+- Compact layout with badges, search, filter buttons
+- Collapsible filters section with `border-t border-gray-200`
+
+Main Graph Card:
+- Same teal theme as controls
+- ReactFlow embedded in CardContent with specific height
+- Fullscreen support with conditional styling
+
+Details Panel:
+- Purple theme (`border-purple-200`, `bg-purple-50`, `text-purple-900`)
+- Collapsible with chevron icon in header
+- Scrollable content sections with `max-h-48 overflow-y-auto`
+- Copy buttons for data export
+
+Graph Nodes:
+- Nodes: Rectangular with colored border, white background
+- Topics: Circular (rounded-full) with amber theme
+- Selected state: `ring-2 ring-{color}-500 ring-offset-2`
+
+=== DATA DISPLAY ===
+Key-Value Pairs:
+- Layout: `flex justify-between items-start gap-3 py-2 border-b`
+- Label: `text-sm font-medium text-gray-600 flex-shrink-0`
+- Value: `text-sm font-mono text-gray-900 text-right break-all`
+
+Code Blocks:
+- Container: `bg-gray-50 border rounded-lg p-3`
+- Content: `text-xs font-mono text-gray-800 whitespace-pre-wrap break-words overflow-x-auto`
+
+Lists with Badges:
+- Layout: `flex flex-wrap gap-2`
+- Badge pattern: `bg-{color}-50 text-{color}-700 border-{color}-200 text-xs`
+- Empty state: Dashed border container with centered message
+
+=== SEPARATORS ===
+Pattern: `<Separator />` component between form sections
+Spacing: Usually between major form groups (spacing: `space-y-6` in container)
+
+=== ADVANCED SECTIONS ===
+Pattern: Bordered container with title
+- Container: `p-4 rounded-lg border`
+- Title: `text-sm font-semibold text-indigo-900 flex items-center gap-2`
+- Icon: `h-4 w-4`
+- Content: Standard form layout inside
+
+=== ACCESSIBILITY ===
+- Sufficient contrast for tinted headers (test with status colors)
+- Clear focus styles on interactive elements
+- Tooltips for truncated content and icon-only buttons
+- ARIA labels where appropriate
+- Keyboard navigation support for all interactive elements
+
+=== RESPONSIVE DESIGN ===
+- Text sizes: `text-sm sm:text-base` for responsive scaling
+- Grid layouts: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- Gap spacing: `gap-3 sm:gap-4` for responsive spacing
+- Badge text: Hidden on mobile with `hidden sm:inline` / `sm:hidden` for compact view

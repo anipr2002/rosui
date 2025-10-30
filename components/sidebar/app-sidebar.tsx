@@ -91,7 +91,7 @@ const data = {
       items: [
         {
           title: "Diagnostics",
-          url: "#",
+          url: "/dashboard/monitoring/diagnostics",
         },
         {
           title: "Logs",

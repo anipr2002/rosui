@@ -19,3 +19,6 @@ export type { ServiceInfo, ServiceDefinition, ServiceCall } from './service-stor
 export { useParamsStore } from './param-store'
 export type { ParamInfo, WatchedParamInfo, ValueRecord } from './param-store'
 
+export { useDiagnosticsStore } from './diagnostics-store'
+export type { DiagnosticLevel, DiagnosticStatus, DiagnosticArray, ProcessedDiagnosticStatus, NodeMetrics } from './diagnostics-store'
+
