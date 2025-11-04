@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import LocalFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
@@ -6,6 +6,12 @@ import { Toaster } from "@/components/ui/sonner";
 export const metadata: Metadata = {
   title: "ROSUI",
   description: "ROS 2 Dashboard",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 const montreal = LocalFont({
@@ -21,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${montreal.variable} antialiased`}>
+      <body className={`${montreal.variable} antialiased overflow-x-hidden`}>
         {children}
         <Toaster richColors />
       </body>
