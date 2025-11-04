@@ -85,6 +85,17 @@ const data = {
       ],
     },
     {
+      title: "ROSBAG",
+      url: "#",
+      icon: BookOpen,
+      items: [
+        {
+          title: "Live Capture",
+          url: "/dashboard/rosbag/live-capture",
+        },
+      ],
+    },
+    {
       title: "Monitoring",
       url: "#",
       icon: Bot,
