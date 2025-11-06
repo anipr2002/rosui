@@ -75,6 +75,10 @@ const data = {
           url: "/dashboard/visualization/map-viewer",
         },
         {
+          title:"3d Vis",
+          url:"/dashboard/visualization/3d-vis"
+        },
+        {
           title: "Camera Feeds",
           url: "#",
         },
