@@ -1,0 +1,158 @@
+---
+title: ROSBRIDGE Installation
+description: Step-by-step guide to install and configure rosbridge server
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+
+## Overview
+
+Rosbridge provides a JSON API to ROS, enabling web applications to communicate with ROS topics, services, and more through a WebSocket connection. This guide covers installation for ROS 2 only.
+
+<Banner variant="rainbow">ROS 1 is not supported. Please use ROS 2.</Banner>
+
+## Prerequisites
+
+Before installing rosbridge server, ensure you have:
+
+- A working ROS 2 installation (Humble, Jazzy, or Rolling)
+- Basic command-line familiarity
+- Sudo privileges for package installation
+
+## Installing Rosbridge
+
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+<Tabs items={['Humble', 'Jazzy', 'Rolling']}>
+
+<Tab value="Humble">
+
+Install rosbridge server for ROS 2 Humble
+
+```bash
+sudo apt update
+sudo apt install -y ros-humble-rosbridge-server
+
+```
+
+</Tab>
+
+<Tab value="Jazzy">
+
+Install rosbridge server for ROS 2 Jazzy
+
+```bash
+sudo apt update
+sudo apt install -y ros-jazzy-rosbridge-server
+
+```
+
+</Tab>
+
+<Tab value="Rolling">
+
+Install rosbridge server for ROS 2 Rolling
+
+```bash
+sudo apt update
+sudo apt install -y ros-rolling-rosbridge-server
+```
+
+</Tab>
+
+</Tabs>
+
+![Rosbridge installation terminal output](/docs/install.png)
+
+## Configuration
+
+### Setting Up the Environment
+
+Source your ROS 2 installation to make rosbridge packages available:
+
+<Tabs items={['Bash', 'Zsh', 'Fish']}>
+
+<Tab value="Bash">
+
+```bash
+source /opt/ros/<rosdistro>/setup.bash
+
+```
+
+</Tab>
+
+<Tab value="Zsh">
+
+```zsh
+source /opt/ros/<rosdistro>/setup.zsh
+
+```
+
+</Tab>
+
+<Tab value="Fish">
+
+```fish
+source /opt/ros/<rosdistro>/setup.fish
+
+```
+
+</Tab>
+
+</Tabs>
+
+### Optional: DDS Configuration
+
+For improved performance with ROS 2, set the DDS implementation in your `.bashrc`:
+
+```bash
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+```
+
+## Running Rosbridge
+
+### Launch the WebSocket Server
+
+Launch rosbridge server for ROS 2:
+
+```bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+```
+
+By default, rosbridge creates a WebSocket server on **port 9090**.
+
+![Rosbridge server running successfully](/docs/install.png)
+
+### Custom Port Configuration
+
+To run rosbridge on a different port, pass arguments directly :
+
+```bash
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml port:=8080
+```
+
+## Verifying the Installation
+
+### Test Connection
+
+Once rosbridge is running, you should see output indicating the server has started:
+
+```
+[INFO] [1541100534.152110]: Rosbridge WebSocket server started on port 9090
+```
+
+### Connect from Your Web Application
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port 9090 is already occupied, either stop the conflicting service or specify a different port using the custom configuration method above.
+
+### Connection Refused
+
+Ensure the rosbridge server is running and check firewall settings if connecting from a remote machine
+
+### Module Import Errors
+
+If you encounter Python import errors, verify your ROS 2 environment is properly sourced before launching rosbridge .

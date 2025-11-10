@@ -225,10 +225,10 @@ function Footer() {
             </div>
             <div className="flex justify-center sm:justify-start">
               <p className="text-sm text-muted-foreground">
-                Built with 💙 by{" "}
+                Website by{" "}
                 <a
                   href="https://navana.studio"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                 >
                   Navana Studio
                 </a>

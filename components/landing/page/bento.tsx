@@ -7,6 +7,7 @@ import tfTreeAnimation from "@/public/lottie/tf-tree.json";
 import rosbagAnimation from "@/public/lottie/rosbag.json";
 import layoutAnimation from "@/public/lottie/layout.json";
 import cloudAnimation from "@/public/lottie/cloud.json";
+import terminalAnimation from "@/public/lottie/terminal.json";
 import FadeContent from "../effects/FadeContent";
 
 const Bento = () => {
@@ -137,6 +138,31 @@ const Bento = () => {
                 <p className="text-sm sm:text-base text-gray-10">
                   Collaborate with your team in real-time. Share your screen,
                   view each other's RViz views, and sync rosbags in real-time.
+                </p>
+              </div>
+            </div>
+          </FadeContent>
+        </div>
+
+        {/* Third Row - 1 column */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          {/* Terminal Animation */}
+          <FadeContent delay={1000} className="h-full">
+            <div className="flex flex-col gap-6 sm:gap-8 md:gap-10 justify-evenly p-4 sm:p-6 text-left rounded-xl border md:p-8 bg-gray-1 border-gray-5 h-full">
+              <div className="relative flex-1 flex-grow justify-center content-center">
+                <div className="w-full max-w-[300px] sm:max-w-[400px] md:max-w-[600px] mx-auto">
+                  <Lottie animationData={terminalAnimation} loop={true} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 justify-end h-fit">
+                <h3 className="text-base sm:text-lg font-medium">
+                  Just one command
+                </h3>
+                <p className="text-sm sm:text-base text-gray-10">
+                  Connect to your ROS environment instantly via rosbridge
+                  websocket. No complex setup required—just paste your WebSocket
+                  URL and start monitoring your robot in real-time. Works with
+                  any ROS1 or ROS2 system running the rosbridge_suite package.
                 </p>
               </div>
             </div>

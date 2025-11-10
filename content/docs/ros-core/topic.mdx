@@ -1,0 +1,252 @@
+---
+title: ROS Topics
+description: Monitor, subscribe to, and publish ROS topics with real-time message visualization
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+## Overview
+
+ROS Topics enable publish-subscribe communication between nodes. The ROS UI provides comprehensive topic management with real-time monitoring, subscription, and publishing capabilities. This guide covers how to interact with ROS topics through the web interface.
+
+<Banner variant="tip">
+  Topics are the primary communication mechanism in ROS, allowing nodes to exchange messages asynchronously.
+</Banner>
+
+## Interactive Demo
+
+Experience ROS topic functionality with this interactive demo. The demo showcases the complete topic card interface with real-time subscription, publishing, and message visualization capabilities.
+
+<TopicDemoCard />
+
+### Demo Features
+
+The interactive topic card demonstrates all core features including:
+
+- **Real-time subscription** to ROS topics with live message updates
+- **Message publishing** with JSON message editing and validation
+- **Status indicators** showing subscription/publishing state with color-coded borders
+- **Three-tab interface**: Info, Subscribe, and Publish tabs
+- **Mock data simulation** for testing different message types and scenarios
+
+### Try It Out
+
+1. **Subscribe**: Click the "Subscribe" tab and start receiving mock velocity command messages
+2. **Publish**: Edit the JSON message in the "Publish" tab and send custom velocity commands
+3. **Monitor**: Watch real-time status changes and message flow
+4. **Explore**: Check the Info tab for topic metadata and message definitions
+
+## Topic Card Interface
+
+The topic card provides a unified interface for all topic operations. Each topic is represented by a card with status-based styling and three main tabs.
+
+### Status Indicators
+
+Topic cards use color-coded borders and badges to indicate their current state:
+
+- **Gray**: Inactive topic (no subscription or publishing)
+- **Green**: Subscribed to the topic (receiving messages)
+- **Purple**: Publishing to the topic (sending messages)
+- **Green-Purple Gradient**: Both subscribing and publishing simultaneously
+
+```tsx
+// Status badge example from the demo
+<Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 text-xs">
+  <div className="flex items-center gap-1.5">
+    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+    <span>Subscribed</span>
+  </div>
+</Badge>
+```
+
+## Core Features
+
+### Topic Information Tab
+
+The Info tab displays essential topic metadata and message definitions.
+
+**Key Information Displayed:**
+- Topic name and message type
+- Message definition structure
+- Publisher and subscriber counts
+- Statistics including message rates and history
+
+```tsx
+// Topic info display example
+<div className="flex justify-between items-start gap-3 py-2 border-b">
+  <span className="text-sm font-medium text-gray-600 flex-shrink-0">
+    Topic Name
+  </span>
+  <span className="text-sm font-mono text-gray-900 text-right break-all">
+    {topic.name}
+  </span>
+</div>
+```
+
+### Topic Subscription Tab
+
+Subscribe to topics to receive and monitor messages in real-time.
+
+**Subscription Features:**
+- **Real-time Message Display**: Latest messages shown prominently with timestamps
+- **Message History**: Collapsible history showing up to 20 previous messages
+- **JSON Formatting**: Pretty-printed JSON for easy reading
+- **Auto-scrolling**: New messages appear at the top automatically
+
+```tsx
+// Message display example from demo
+<div className="bg-green-50 border border-green-200 rounded-lg p-3">
+  <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words overflow-x-auto">
+    {JSON.stringify(subscriber.latestMessage, null, 2)}
+  </pre>
+</div>
+```
+
+**Subscription Controls:**
+- Green "Subscribe" button to start receiving messages
+- Red "Unsubscribe" button to stop monitoring
+- Clear history button to remove stored messages
+
+### Topic Publishing Tab
+
+Publish messages to topics with both one-time and periodic publishing options.
+
+**Publishing Capabilities:**
+- **JSON Message Editor**: Monospace textarea with real-time JSON validation
+- **Default Message Templates**: Pre-populated with message structure based on topic type
+- **One-time Publishing**: Send single messages immediately
+- **Periodic Publishing**: Continuous message publishing at configurable rates (0.1-100 Hz)
+
+```tsx
+// Publishing interface example
+<div className="space-y-2">
+  <Label htmlFor="message-json" className="text-sm font-medium">
+    Message (JSON)
+  </Label>
+  <Textarea
+    value={messageJson}
+    onChange={(e) => setMessageJson(e.target.value)}
+    className="w-full min-h-[200px] p-3 font-mono text-sm border rounded-lg"
+    placeholder="Enter message JSON..."
+  />
+</div>
+```
+
+**Publishing Controls:**
+- Purple "Publish Once" button for single messages
+- Rate slider for periodic publishing (0.1 to 100 Hz)
+- Start/Stop buttons with visual status indicators
+- Publishing prevents message editing to avoid conflicts
+
+## Message Types Support
+
+The topic interface automatically handles various ROS message types:
+
+### Standard ROS Messages
+
+**Common message types with built-in support:**
+- `std_msgs/String`: Simple text messages
+- `geometry_msgs/Twist`: Velocity commands (linear and angular)
+- `turtlesim/Pose`: Position and orientation data
+
+```json
+// Example Twist message structure
+{
+  "linear": { "x": 0.5, "y": 0.0, "z": 0.0 },
+  "angular": { "x": 0.0, "y": 0.0, "z": 0.2 }
+}
+```
+
+### Complex Message Types
+
+**Advanced message types with automatic parsing:**
+- `sensor_msgs/LaserScan`: LIDAR data with ranges and intensities
+- Custom message types with nested structures
+- Array fields and complex data types
+
+## Performance Features
+
+### Message History Management
+- Stores last 50 messages per topic for analysis
+- Efficient memory usage with automatic cleanup
+- Timestamp tracking for message sequencing
+
+### Real-time Updates
+- WebSocket-based communication for instant message delivery
+- Minimal latency between ROS and web interface
+- Automatic reconnection handling
+
+### Validation and Error Handling
+- Real-time JSON validation for published messages
+- Clear error messages for invalid data
+- Prevents publishing malformed messages
+
+## Usage Examples
+
+### Monitoring Robot State
+
+Subscribe to position topics to track robot movement:
+
+1. Find the pose topic (e.g., `/turtle1/pose`)
+2. Click the "Subscribe" tab
+3. Click "Subscribe" to start receiving position updates
+4. Watch real-time position data in the message display
+5. Expand history to see movement patterns
+
+### Controlling Robot Motion
+
+Publish velocity commands to control robot movement:
+
+1. Find the command topic (e.g., `/turtle1/cmd_vel`)
+2. Click the "Publish" tab
+3. Edit the JSON message with desired velocities
+4. Click "Publish Once" for immediate movement
+5. Or set up periodic publishing for continuous motion
+
+### Sensor Data Visualization
+
+Monitor sensor data streams for debugging and analysis:
+
+1. Subscribe to sensor topics (e.g., `/scan` for LIDAR)
+2. View structured sensor data in real-time
+3. Use message history for data pattern analysis
+4. Clear history when switching between debugging sessions
+
+## Best Practices
+
+### Subscription Management
+- Unsubscribe from unused topics to reduce network traffic
+- Clear message history when debugging different scenarios
+- Monitor subscriber counts to understand topic usage
+
+### Publishing Guidelines
+- Use appropriate publishing rates to avoid overwhelming the system
+- Validate JSON structure before publishing
+- Test with low rates before increasing periodic publishing frequency
+
+### Performance Optimization
+- Limit subscriptions to actively monitored topics
+- Use periodic publishing judiciously for control applications
+- Clear history regularly when analyzing large data streams
+
+## Troubleshooting
+
+### Connection Issues
+- Ensure rosbridge server is running and accessible
+- Check WebSocket connection status in browser developer tools
+- Verify topic names and types match ROS environment
+
+### Message Format Errors
+- Use the auto-generated message templates as starting points
+- Validate JSON syntax before publishing
+- Check topic type definitions for correct field names and types
+
+### Performance Problems
+- Reduce subscription count for better responsiveness
+- Lower periodic publishing rates if experiencing lag
+- Clear message history to free up browser memory
+
+---
+
+The topic interface provides a powerful yet intuitive way to interact with ROS communication channels, making ROS development and debugging accessible through a modern web interface.

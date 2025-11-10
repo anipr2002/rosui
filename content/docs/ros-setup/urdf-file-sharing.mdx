@@ -1,0 +1,231 @@
+---
+title: URDF File Sharing
+description: Configure your ROS workspace to share URDF files with the web application for 3D visualization
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+## Overview
+
+When loading URDF files in the 3D visualization, the web application needs to access mesh files (STL, OBJ, COLLADA) referenced in the URDF. These files are typically stored in your ROS workspace's `install` directory. This guide covers how to serve these files to enable proper mesh loading in the 3D viewer.
+
+<Banner variant="rainbow">
+  CORS (Cross-Origin Resource Sharing) must be enabled when serving files from
+  Docker containers
+</Banner>
+
+## Without Docker
+
+If you're running ROS directly on your host machine (not in Docker), you can serve URDF files using Python's built-in HTTP server:
+
+### Start the HTTP Server
+
+Navigate to your ROS workspace's install directory and start the server:
+
+```bash
+cd /path/to/your/ros/workspace/install
+python3 -m http.server 8080
+```
+
+The server will start on `http://localhost:8080` and serve all files in the install directory.
+
+### Verify Access
+
+Test that your URDF files are accessible:
+
+```bash
+# Check if you can access URDF files
+curl http://localhost:8080/share/your_package/urdf/robot.urdf
+
+# Check if mesh files are accessible
+curl http://localhost:8080/share/your_package/meshes/link.stl
+```
+
+## With Docker
+
+When running ROS in Docker containers, additional configuration is required to handle CORS (Cross-Origin Resource Sharing) restrictions. Modern browsers block cross-origin requests by default for security reasons.
+
+### The Problem
+
+Without CORS headers, you'll see errors like:
+
+```
+Access to XMLHttpRequest at 'http://localhost:8080/meshes/link.stl' from origin 'http://localhost:3000' has been blocked by CORS policy
+```
+
+### Solution: CORS-Enabled Python Server
+
+<Tabs items={['Simple Script', 'One-liner', 'Docker Exec']}>
+<Tab value="Simple Script">
+
+Create a CORS-enabled server script in your Docker container:
+
+```bash
+# In your Docker container terminal
+cat > /tmp/cors_server.py << 'EOF'
+#!/usr/bin/env python3
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import os
+
+class CORSRequestHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        super().end_headers()
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+
+os.chdir('/home/rosuser/Code/ws/install')
+httpd = HTTPServer(('0.0.0.0', 8080), CORSRequestHandler)
+print('Server running on port 8080 with CORS enabled')
+httpd.serve_forever()
+EOF
+
+# Make it executable and run
+chmod +x /tmp/cors_server.py
+python3 /tmp/cors_server.py
+```
+
+</Tab>
+
+<Tab value="One-liner">
+
+Run the CORS server directly with a one-liner:
+
+```bash
+# Stop any existing server first (Ctrl+C)
+# Then run this in your Docker container
+python3 -c "
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import os
+class CORSRequestHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        super().end_headers()
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+os.chdir('/home/rosuser/Code/ws/install')
+httpd = HTTPServer(('0.0.0.0', 8080), CORSRequestHandler)
+print('CORS-enabled server on :8080')
+httpd.serve_forever()
+"
+```
+
+</Tab>
+
+<Tab value="Docker Exec">
+
+Run the server from your host machine using `docker exec`:
+
+```bash
+# Get your container name
+docker ps
+
+# Run the CORS server in detached mode
+docker exec -d <container_name> python3 -c "
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import os
+class CORSRequestHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        super().end_headers()
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+os.chdir('/home/rosuser/Code/ws/install')
+httpd = HTTPServer(('0.0.0.0', 8080), CORSRequestHandler)
+print('CORS-enabled server on :8080')
+httpd.serve_forever()
+"
+```
+
+</Tab>
+
+</Tabs>
+
+### Verify the Setup
+
+1. **Check server is running**: You should see `Server running on port 8080 with CORS enabled`
+
+2. **Test CORS headers**: Use curl to verify CORS headers are present:
+
+```bash
+curl -I http://localhost:8080/
+# Should include:
+# Access-Control-Allow-Origin: *
+# Access-Control-Allow-Methods: GET, OPTIONS
+# Access-Control-Allow-Headers: *
+```
+
+3. **Test from browser**: Open your web application and try loading a URDF. The meshes should now load without CORS errors.
+
+### Troubleshooting
+
+#### Port Already in Use
+
+If port 8080 is busy, use a different port:
+
+```bash
+# Change 8080 to any available port (e.g., 8081)
+python3 -c "...HTTPServer(('0.0.0.0', 8081), CORSRequestHandler)..."
+```
+
+#### File Not Found Errors
+
+Ensure the path `/home/rosuser/Code/ws/install` exists in your container:
+
+```bash
+# Check the directory structure
+ls -la /home/rosuser/Code/ws/install
+
+# If the path is different, modify the script:
+# Change: os.chdir('/home/rosuser/Code/ws/install')
+# To:    os.chdir('/your/correct/path/install')
+```
+
+#### Still Getting CORS Errors
+
+1. **Verify the server is actually running with CORS**:
+
+```bash
+ps aux | grep python
+curl -I http://localhost:8080
+```
+
+2. **Check if another server is running on port 8080**:
+
+```bash
+netstat -tlnp | grep :8080
+```
+
+3. **Restart the web application** after starting the CORS server, as browsers may cache CORS policies.
+
+## Configuration in Web Application
+
+Once the CORS-enabled server is running, configure the URDF loader in your 3D visualization to use the correct base URL:
+
+```javascript
+// Example configuration
+const urdfBaseUrl = "http://localhost:8080";
+const urdfPath = "/share/your_package/urdf/robot.urdf";
+
+// Full URL: http://localhost:8080/share/your_package/urdf/robot.urdf
+```
+
+## Summary
+
+- **Without Docker**: Use standard Python HTTP server on port 8080
+- **With Docker**: Use CORS-enabled Python server to handle cross-origin requests
+- **Verification**: Check both server logs and browser network tab for successful mesh loading
+- **Troubleshooting**: Ensure correct paths and that CORS headers are being sent
+
+With CORS properly configured, your URDF files should load completely with all meshes visible in the 3D visualization.

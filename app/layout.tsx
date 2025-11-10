@@ -1,7 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { RootProvider } from "fumadocs-ui/provider/next";
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 import "./globals.css";
 import LocalFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
+import ConvexClientProvider from "@/app/ConvexClientProvider";
 
 export const metadata: Metadata = {
   title: "ROSUI",
@@ -26,11 +36,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${montreal.variable} antialiased overflow-x-hidden`}>
-        {children}
-        <Toaster richColors />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${montreal.variable} antialiased overflow-x-hidden`}>
+          <RootProvider
+            theme={{
+              enabled: false,
+            }}
+          >
+            <ConvexClientProvider>{children}</ConvexClientProvider>
+          </RootProvider>
+          <Toaster richColors />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
