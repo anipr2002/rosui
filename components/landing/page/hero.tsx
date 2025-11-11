@@ -1,12 +1,44 @@
-import React from "react";
+"use client";
+import React, { useEffect, useState } from "react";
+import { addToWaitlist, getWaitlistCount } from "@/app/actions/waitlist";
+
 import { BlurText } from "../effects/BlurText";
 import FadeContent from "../effects/FadeContent";
 import Image from "next/image";
 import { ArrowRightIcon } from "lucide-react";
 import StickerPeel from "../effects/StickerPeel";
 import PixelBlast from "../effects/PixelBlast";
+import { toast } from "sonner";
 
 const Hero = () => {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      const result = await getWaitlistCount();
+      if (result.success) {
+        setCount(result.count);
+      }
+    };
+    fetchCount();
+  }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("loading");
+    const result = await addToWaitlist(email);
+    if (result.success) {
+      setStatus("success");
+      toast.success("Added to waitlist");
+    } else {
+      setStatus("error");
+      toast.error("Failed to add to waitlist");
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-20 relative">
       <PixelBlast
@@ -77,6 +109,8 @@ const Hero = () => {
               <div className="relative flex-1 w-full">
                 <input
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Your email"
                   className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-700 placeholder-slate-500"
                 />
@@ -96,11 +130,21 @@ const Hero = () => {
                   </svg>
                 </div>
               </div>
-              <button className="bg-blue-50 border border-blue-200 flex items-center gap-2 hover:bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors duration-200 whitespace-nowrap">
+              <button
+                type="submit"
+                disabled={status === "loading"}
+                onClick={handleSubmit}
+                className="bg-blue-50 border border-blue-200 flex items-center gap-2 hover:bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors duration-200 whitespace-nowrap"
+              >
                 <ArrowRightIcon className="w-4 h-4" />
-                Get early access
+                {status === "loading"
+                  ? "Adding to waitlist..."
+                  : "Get early access"}
               </button>
             </div>
+            <p className="text-md text-muted-foreground mt-4">
+              {count} people on the waitlist
+            </p>
           </FadeContent>
         </div>
       </div>

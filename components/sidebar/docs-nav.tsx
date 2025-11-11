@@ -67,7 +67,7 @@ export function DocsSidebarNav({ items }: DocsSidebarNavProps) {
   )
 }
 
-type SidebarTreeItem = DocsSidebarItem & {
+type SidebarTreeItem = Omit<DocsSidebarItem, 'children'> & {
   children: SidebarTreeItem[]
 }
 

@@ -36,10 +36,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider waitlistUrl="/">
       <html lang="en" suppressHydrationWarning>
-        <body className={`${montreal.variable} antialiased overflow-x-hidden`}>
+        <body
+          className={`${montreal.variable} antialiased overflow-x-hidden flex flex-col min-h-screen`}
+        >
           <RootProvider
+            dir="ltr"
             theme={{
               enabled: false,
             }}
