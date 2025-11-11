@@ -7,11 +7,18 @@ import Dither from "../effects/Dither";
 
 function Footer() {
   const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStatus("loading");
     // Handle waitlist submission
     console.log("Waitlist email:", email);
+    // Simulate async operation
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setStatus("success");
     setEmail("");
   };
 
