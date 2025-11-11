@@ -81,30 +81,21 @@ const Hero = () => {
 
         {/* Main Headline */}
         <div className="space-y-6 relative z-20">
-          <BlurText
+          <FadeContent
             className="text-3xl md:text-5xl font-light text-center max-w-6xl 
         mx-auto "
-            tag="h1"
             duration={2.5}
-            stagger={0.06}
-            ease="power2.out"
-            skewAmount={0}
-            blurAmount={10}
           >
             The web dashboard ROS developers actually want to use
-          </BlurText>
+          </FadeContent>
 
-          <BlurText
+          <FadeContent
             className="text-2xl md:text-3xl font-semibold text-[#00000070]"
             duration={1.5}
-            stagger={0.06}
-            ease="power2.out"
-            skewAmount={0}
-            blurAmount={10}
             delay={1.2}
           >
             Real-time robot monitoring from your browser
-          </BlurText>
+          </FadeContent>
           {/* CTA Section */}
           <FadeContent delay={1200} className="mt-16 relative z-20">
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
