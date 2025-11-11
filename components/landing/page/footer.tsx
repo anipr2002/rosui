@@ -42,22 +42,18 @@ function Footer() {
           </p>
 
           {/* Waitlist Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-4 justify-center items-center max-w-md mx-auto mt-8"
-          >
-            <div className="relative w-full">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
+            <div className="relative flex-1 w-full">
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Your email"
-                required
-                className="w-full px-4 py-3 rounded-lg border border-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-700 placeholder-slate-500"
+                className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-700 placeholder-slate-500"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                 <svg
-                  className="w-5 h-5 text-black"
+                  className="w-5 h-5 text-slate-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -73,12 +69,16 @@ function Footer() {
             </div>
             <button
               type="submit"
-              className="w-full sm:w-auto bg-blue-50 border border-blue-200 flex items-center justify-center gap-2 hover:bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors duration-200"
+              disabled={status === "loading"}
+              onClick={handleSubmit}
+              className="bg-blue-50 border border-blue-200 flex items-center gap-2 hover:bg-blue-100 text-blue-600 px-8 py-3 rounded-lg font-semibold transition-colors duration-200 whitespace-nowrap"
             >
               <ArrowRightIcon className="w-4 h-4" />
-              Join Waitlist
+              {status === "loading"
+                ? "Adding to waitlist..."
+                : "Get early access"}
             </button>
-          </form>
+          </div>
         </div>
       </div>
 

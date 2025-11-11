@@ -9,6 +9,7 @@ import { ArrowRightIcon } from "lucide-react";
 import StickerPeel from "../effects/StickerPeel";
 import PixelBlast from "../effects/PixelBlast";
 import { toast } from "sonner";
+import Nav from "./nav";
 
 const Hero = () => {
   const [email, setEmail] = useState("");
@@ -41,6 +42,7 @@ const Hero = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-20 relative">
+      <Nav />
       <PixelBlast
         className="absolute inset-0"
         variant="circle"
