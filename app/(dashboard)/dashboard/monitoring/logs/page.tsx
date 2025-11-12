@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LogViewer } from "@/components/dashboard/logs";
+import { LogViewer } from "@/components/dashboard/monitoring/logs";
 
 function LogsPage() {
   return (

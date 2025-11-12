@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRosStore } from "@/store/ros-store";
-import { TFTree } from "@/components/dashboard/tf-tree";
+import { TFTree } from "@/components/dashboard/visulatization/tf-tree";
 import { ReactFlowProvider } from "reactflow";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { SpinnerCustom } from "@/components/ui/spinner";

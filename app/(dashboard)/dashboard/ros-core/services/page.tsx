@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useServicesStore } from "@/store/service-store";
 import { useRosStore } from "@/store/ros-store";
-import { ServiceCard } from "@/components/dashboard/services";
+import { ServiceCard } from "@/components/dashboard/roscore/services";
 import { Spinner, SpinnerCustom } from "@/components/ui/spinner";
 import {
   AlertCircle,

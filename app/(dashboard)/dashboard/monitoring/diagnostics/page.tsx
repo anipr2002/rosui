@@ -8,7 +8,7 @@ import {
   TopicManager,
   NodeStatusCard,
   DiagnosticsAggregatorView,
-} from "@/components/dashboard/diagnostics";
+} from "@/components/dashboard/monitoring/diagnostics";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 

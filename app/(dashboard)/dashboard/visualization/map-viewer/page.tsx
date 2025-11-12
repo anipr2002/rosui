@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { MapViewer } from "@/components/dashboard/map-viewer";
-import { MapDetailsPanel } from "@/components/dashboard/map-viewer";
+import { MapViewer } from "@/components/dashboard/visulatization/map-viewer";
+import { MapDetailsPanel } from "@/components/dashboard/visulatization/map-viewer";
 
 export default function MapViewerPage() {
   return (

@@ -5,7 +5,7 @@ import {
   Viewer3D,
   Controls3D,
   DetailsPanel3D,
-} from "@/components/dashboard/3d-vis";
+} from "@/components/dashboard/visulatization/3d-vis";
 
 export default function ThreeDVisPage() {
   return (

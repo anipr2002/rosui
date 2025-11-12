@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useRosStore } from "@/store/ros-store";
 import { useParamsStore } from "@/store/param-store";
-import { ParamCard } from "@/components/dashboard/params";
+import { ParamCard } from "@/components/dashboard/roscore/params";
 import { AlertCircle, ArrowRight, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { SpinnerCustom } from "@/components/ui/spinner";

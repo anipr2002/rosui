@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useRosStore } from "@/store/ros-store";
 import { useTopicsStore } from "@/store/topic-store";
-import { TopicCard } from "@/components/dashboard/topics";
+import { TopicCard } from "@/components/dashboard/roscore/topics";
 import { AlertCircle, ArrowRight, Loader2, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { SpinnerCustom } from "@/components/ui/spinner";

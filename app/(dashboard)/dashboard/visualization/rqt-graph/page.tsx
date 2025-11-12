@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRosStore } from "@/store/ros-store";
-import { RQTGraph } from "@/components/dashboard/rqt-graph";
+import { RQTGraph } from "@/components/dashboard/visulatization/rqt-graph";
 import { ReactFlowProvider } from "reactflow";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { SpinnerCustom } from "@/components/ui/spinner";
