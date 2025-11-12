@@ -142,7 +142,7 @@ const sidebarData = {
       items: [
         {
           title: "Dashboards",
-          url: "#",
+          url: "/dashboard/advanced/dashboards",
         },
         {
           title: "Fleet Manager",
