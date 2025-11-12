@@ -92,8 +92,8 @@ const sidebarData = {
       icon: BookOpen,
       items: [
         {
-          title: "Live Capture",
-          url: "/dashboard/rosbag/live-capture",
+          title: "Recordings",
+          url: "#",
         },
       ],
     },
@@ -217,7 +217,7 @@ export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
         <NavSecondary items={sidebarData.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={sidebarUser} />
+        <NavUser currentUser={sidebarUser} />
       </SidebarFooter>
     </Sidebar>
   );
