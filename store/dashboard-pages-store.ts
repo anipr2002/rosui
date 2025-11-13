@@ -7,6 +7,7 @@ export interface Panel {
   colspan: number
   rowspan: number
   panelType: string
+  config?: any // Panel-specific configuration (e.g., LivePlotConfig for plot panels)
 }
 
 export type LayoutType = 'single' | 'twoColumn' | 'threeColumn' | 'fourColumn'
