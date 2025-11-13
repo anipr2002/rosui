@@ -267,10 +267,10 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   updatePlotPanel: (panelId: string, config: Partial<PlotPanelConfig>) => {
     set((state) => ({
       panels: state.panels.map(p =>
-        p.id === panelId ? { ...p, ...config } : p
+        p.id === panelId && p.type === 'plot' ? { ...p, ...config } as PlotPanelConfig : p
       ),
       plotPanels: state.plotPanels.map(p =>
-        p.id === panelId ? { ...p, ...config } : p
+        p.id === panelId ? { ...p, ...config } as PlotPanelConfig : p
       )
     }))
   },
@@ -362,10 +362,10 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   updateGaugePanel: (panelId: string, config: Partial<GaugePanelConfig>) => {
     set((state) => ({
       panels: state.panels.map(p =>
-        p.id === panelId && p.type === 'gauge' ? { ...p, ...config } : p
+        p.id === panelId && p.type === 'gauge' ? { ...p, ...config } as GaugePanelConfig : p
       ),
       gaugePanels: state.gaugePanels.map(p =>
-        p.id === panelId ? { ...p, ...config } : p
+        p.id === panelId ? { ...p, ...config } as GaugePanelConfig : p
       )
     }))
   },
