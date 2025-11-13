@@ -7,6 +7,7 @@ import {
   PlaybackControls,
   PlotPanel,
   GaugePanel,
+  IndicatorPanel,
 } from "@/components/dashboard/rosbag/panels";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +25,18 @@ import {
   Zap,
   ChevronDown,
   Gauge,
+  Lightbulb,
 } from "lucide-react";
 
 export default function PanelsPage() {
-  const { file, metadata, panels, addPlotPanel, addGaugePanel } =
-    usePanelsStore();
+  const {
+    file,
+    metadata,
+    panels,
+    addPlotPanel,
+    addGaugePanel,
+    addIndicatorPanel,
+  } = usePanelsStore();
 
   // No file loaded - show upload interface
   if (!file || !metadata) {
@@ -104,6 +112,10 @@ export default function PanelsPage() {
                   <Gauge className="h-4 w-4 mr-2" />
                   Gauge Panel
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={addIndicatorPanel}>
+                  <Lightbulb className="h-4 w-4 mr-2" />
+                  Indicator Panel
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -115,6 +127,9 @@ export default function PanelsPage() {
             }
             if (panel.type === "gauge") {
               return <GaugePanel key={panel.id} panelConfig={panel} />;
+            }
+            if (panel.type === "indicator") {
+              return <IndicatorPanel key={panel.id} panelConfig={panel} />;
             }
             return null;
           })
@@ -139,6 +154,10 @@ export default function PanelsPage() {
             <DropdownMenuItem onClick={addGaugePanel}>
               <Gauge className="h-4 w-4 mr-2" />
               Gauge Panel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={addIndicatorPanel}>
+              <Lightbulb className="h-4 w-4 mr-2" />
+              Indicator Panel
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

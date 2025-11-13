@@ -43,8 +43,25 @@ export interface GaugePanelConfig {
   reverseDirection: boolean
 }
 
+export interface IndicatorRule {
+  id: string
+  comparison: 'equal' | 'less' | 'lessOrEqual' | 'greater' | 'greaterOrEqual'
+  compareWith: string | number | boolean
+  color: string
+  label: string
+}
+
+export interface IndicatorPanelConfig {
+  id: string
+  type: 'indicator'
+  topic: string
+  messagePath: string
+  style: 'bulb' | 'background'
+  rules: IndicatorRule[]
+}
+
 // Union type for all panel types (extensible for future panel types)
-export type PanelConfig = PlotPanelConfig | GaugePanelConfig
+export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig
 
 interface PanelsState {
   // File state
@@ -65,6 +82,7 @@ interface PanelsState {
   // Getters (for backward compatibility and convenience)
   plotPanels: PlotPanelConfig[]
   gaugePanels: GaugePanelConfig[]
+  indicatorPanels: IndicatorPanelConfig[]
   
   // Actions
   loadFile: (file: File) => Promise<void>
@@ -91,6 +109,14 @@ interface PanelsState {
   addGaugePanel: () => void
   updateGaugePanel: (panelId: string, config: Partial<GaugePanelConfig>) => void
   
+  // Indicator panel specific
+  addIndicatorPanel: () => void
+  updateIndicatorPanel: (panelId: string, config: Partial<IndicatorPanelConfig>) => void
+  addIndicatorRule: (panelId: string, rule: Omit<IndicatorRule, 'id'>) => void
+  updateIndicatorRule: (panelId: string, ruleId: string, updates: Partial<IndicatorRule>) => void
+  removeIndicatorRule: (panelId: string, ruleId: string) => void
+  reorderIndicatorRules: (panelId: string, startIndex: number, endIndex: number) => void
+  
   // Data access
   getMessagesForTopic: (topic: string, startTime?: bigint, endTime?: bigint) => McapMessage[]
   getDeserializedMessage: (message: McapMessage) => any
@@ -113,6 +139,7 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   panels: [],
   plotPanels: [],
   gaugePanels: [],
+  indicatorPanels: [],
   
   // Load MCAP file
   loadFile: async (file: File) => {
@@ -236,7 +263,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
     set((state) => ({
       panels: state.panels.filter(p => p.id !== panelId),
       plotPanels: state.plotPanels.filter(p => p.id !== panelId),
-      gaugePanels: state.gaugePanels.filter(p => p.id !== panelId)
+      gaugePanels: state.gaugePanels.filter(p => p.id !== panelId),
+      indicatorPanels: state.indicatorPanels.filter(p => p.id !== panelId)
     }))
   },
   
@@ -368,6 +396,119 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         p.id === panelId ? { ...p, ...config } as GaugePanelConfig : p
       )
     }))
+  },
+  
+  // Indicator panel specific
+  addIndicatorPanel: () => {
+    const defaultTopic = get().metadata?.topics[0]?.name || ''
+    const newPanel: IndicatorPanelConfig = {
+      id: `panel-${Date.now()}-${Math.random()}`,
+      type: 'indicator',
+      topic: defaultTopic,
+      messagePath: '.data',
+      style: 'bulb',
+      rules: []
+    }
+    
+    set((state) => ({
+      panels: [...state.panels, newPanel],
+      indicatorPanels: [...state.indicatorPanels, newPanel]
+    }))
+  },
+  
+  updateIndicatorPanel: (panelId: string, config: Partial<IndicatorPanelConfig>) => {
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'indicator' ? { ...p, ...config } as IndicatorPanelConfig : p
+      ),
+      indicatorPanels: state.indicatorPanels.map(p =>
+        p.id === panelId ? { ...p, ...config } as IndicatorPanelConfig : p
+      )
+    }))
+  },
+  
+  addIndicatorRule: (panelId: string, rule: Omit<IndicatorRule, 'id'>) => {
+    const newRule: IndicatorRule = {
+      ...rule,
+      id: `rule-${Date.now()}-${Math.random()}`
+    }
+    
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'indicator'
+          ? { ...p, rules: [...p.rules, newRule] }
+          : p
+      ),
+      indicatorPanels: state.indicatorPanels.map(p =>
+        p.id === panelId
+          ? { ...p, rules: [...p.rules, newRule] }
+          : p
+      )
+    }))
+  },
+  
+  updateIndicatorRule: (panelId: string, ruleId: string, updates: Partial<IndicatorRule>) => {
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'indicator'
+          ? {
+              ...p,
+              rules: p.rules.map(r =>
+                r.id === ruleId ? { ...r, ...updates } : r
+              )
+            }
+          : p
+      ),
+      indicatorPanels: state.indicatorPanels.map(p =>
+        p.id === panelId
+          ? {
+              ...p,
+              rules: p.rules.map(r =>
+                r.id === ruleId ? { ...r, ...updates } : r
+              )
+            }
+          : p
+      )
+    }))
+  },
+  
+  removeIndicatorRule: (panelId: string, ruleId: string) => {
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'indicator'
+          ? { ...p, rules: p.rules.filter(r => r.id !== ruleId) }
+          : p
+      ),
+      indicatorPanels: state.indicatorPanels.map(p =>
+        p.id === panelId
+          ? { ...p, rules: p.rules.filter(r => r.id !== ruleId) }
+          : p
+      )
+    }))
+  },
+  
+  reorderIndicatorRules: (panelId: string, startIndex: number, endIndex: number) => {
+    set((state) => {
+      const reorder = (rules: IndicatorRule[]) => {
+        const result = Array.from(rules)
+        const [removed] = result.splice(startIndex, 1)
+        result.splice(endIndex, 0, removed)
+        return result
+      }
+      
+      return {
+        panels: state.panels.map(p =>
+          p.id === panelId && p.type === 'indicator'
+            ? { ...p, rules: reorder(p.rules) }
+            : p
+        ),
+        indicatorPanels: state.indicatorPanels.map(p =>
+          p.id === panelId
+            ? { ...p, rules: reorder(p.rules) }
+            : p
+        )
+      }
+    })
   },
   
   // Data access
