@@ -99,6 +99,10 @@ const sidebarData = {
           title: "Convert",
           url: "/dashboard/rosbag/convert",
         },
+        {
+          title: "Panel Viewer",
+          url: "/dashboard/rosbag/panels",
+        },
       ],
     },
     {

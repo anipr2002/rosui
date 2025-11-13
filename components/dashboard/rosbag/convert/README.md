@@ -83,3 +83,4 @@ A client-side rosbag converter that allows ROS developers to convert `.bag` and 
 - Background worker thread for large files
 - Pause/resume functionality
 
+
