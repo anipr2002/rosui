@@ -1,22 +1,19 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { PageTabs } from "./page-tabs";
-import { LayoutControls } from "./layout-controls";
 import { PanelGrid } from "./panel-grid";
 import { LAYOUTS, PANEL_COLORS } from "./constants";
 import { useDashboardPagesStore } from "@/store/dashboard-pages-store";
-import type { Panel, LayoutType } from "./types";
+import { Plus } from "lucide-react";
+import type { Panel } from "./types";
 
 export default function PanelLayoutManager() {
   const { 
     pages,
     activePageId,
-    updatePagePanels, 
-    updatePageLayout
+    updatePagePanels
   } = useDashboardPagesStore();
-  
-  const [isControlsOpen, setIsControlsOpen] = useState(true);
   
   const activePage = useMemo(
     () => pages.find((p) => p.id === activePageId) || null,
@@ -33,15 +30,6 @@ export default function PanelLayoutManager() {
     return String(maxId + 1);
   }, [activePage]);
 
-  const handleLayoutChange = useCallback((layout: LayoutType) => {
-    if (activePage) {
-      updatePageLayout(activePage.id, layout);
-    }
-  }, [activePage, updatePageLayout]);
-
-  const handleToggleControls = useCallback(() => {
-    setIsControlsOpen((prev) => !prev);
-  }, []);
 
   const handleAddPanel = useCallback(() => {
     if (!activePage) return;
@@ -97,26 +85,8 @@ export default function PanelLayoutManager() {
   const maxCols = LAYOUTS[currentLayout].cols;
 
   return (
-    <div className="w-full mx-auto py-8 px-4">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Panel Layout Manager
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Create, arrange, resize, and organize panels with drag and drop
-        </p>
-      </div>
-
+    <div className="w-full mx-auto py-4 px-4 relative">
       <PageTabs />
-
-      <LayoutControls
-        currentLayout={currentLayout}
-        onLayoutChange={handleLayoutChange}
-        onAddPanel={handleAddPanel}
-        isControlsOpen={isControlsOpen}
-        onToggleControls={handleToggleControls}
-      />
 
       <PanelGrid
         panels={panels}
@@ -126,6 +96,15 @@ export default function PanelLayoutManager() {
         onResizePanel={handleResizePanel}
         onChangePanelType={handleChangePanelType}
       />
+
+      {/* Floating Add Panel Button */}
+      <button
+        onClick={handleAddPanel}
+        className="fixed bottom-8 right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition-all hover:scale-105 z-50"
+        title="Add Panel"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   );
 }

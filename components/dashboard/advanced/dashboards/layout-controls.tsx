@@ -28,7 +28,7 @@ const LayoutControls = React.memo<LayoutControlsProps>(
     );
 
     return (
-      <div className="bg-white border rounded-xl shadow-none pt-0 mb-4">
+      <div className="bg-white border rounded-xl shadow-none pt-0 mt-4">
         <button
           onClick={onToggleControls}
           className="w-full bg-indigo-50 border-indigo-200 border-b rounded-t-xl pt-6 px-6 pb-4 flex items-center justify-between hover:bg-indigo-100 transition-colors"
