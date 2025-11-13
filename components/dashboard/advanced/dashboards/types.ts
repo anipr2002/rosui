@@ -20,3 +20,11 @@ export interface PanelTypeInfo {
   component?: React.ComponentType<any>;
   defaultProps?: Record<string, any>;
 }
+
+export interface DashboardPage {
+  id: string;
+  name: string;
+  panels: Panel[];
+  layout: LayoutType;
+  createdAt: number;
+}

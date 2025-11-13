@@ -28,3 +28,6 @@ export type { MapMetadata, NavigationGoal } from './map-store'
 export { useLogStore } from './log-store'
 export type { LogLevel, LogEntry, LogMessage, FilterState } from './log-store'
 
+export { useDashboardPagesStore } from './dashboard-pages-store'
+export type { DashboardPage, Panel as DashboardPanel, LayoutType } from './dashboard-pages-store'
+
