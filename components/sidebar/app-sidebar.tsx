@@ -92,8 +92,12 @@ const sidebarData = {
       icon: BookOpen,
       items: [
         {
-          title: "Recordings",
-          url: "#",
+          title: "Record",
+          url: "/dashboard/rosbag/record",
+        },
+        {
+          title: "Convert",
+          url: "/dashboard/rosbag/convert",
         },
       ],
     },
