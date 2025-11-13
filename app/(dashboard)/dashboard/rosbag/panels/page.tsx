@@ -8,6 +8,7 @@ import {
   PlotPanel,
   GaugePanel,
   IndicatorPanel,
+  RawTopicViewerPanel,
 } from "@/components/dashboard/rosbag/panels";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import {
   ChevronDown,
   Gauge,
   Lightbulb,
+  FileText,
 } from "lucide-react";
 
 export default function PanelsPage() {
@@ -36,6 +38,7 @@ export default function PanelsPage() {
     addPlotPanel,
     addGaugePanel,
     addIndicatorPanel,
+    addRawTopicViewerPanel,
   } = usePanelsStore();
 
   // No file loaded - show upload interface
@@ -116,6 +119,10 @@ export default function PanelsPage() {
                   <Lightbulb className="h-4 w-4 mr-2" />
                   Indicator Panel
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={addRawTopicViewerPanel}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Raw Topic Viewer
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -130,6 +137,9 @@ export default function PanelsPage() {
             }
             if (panel.type === "indicator") {
               return <IndicatorPanel key={panel.id} panelConfig={panel} />;
+            }
+            if (panel.type === "raw-topic-viewer") {
+              return <RawTopicViewerPanel key={panel.id} panelConfig={panel} />;
             }
             return null;
           })
@@ -158,6 +168,10 @@ export default function PanelsPage() {
             <DropdownMenuItem onClick={addIndicatorPanel}>
               <Lightbulb className="h-4 w-4 mr-2" />
               Indicator Panel
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={addRawTopicViewerPanel}>
+              <FileText className="h-4 w-4 mr-2" />
+              Raw Topic Viewer
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

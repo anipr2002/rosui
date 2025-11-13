@@ -60,8 +60,17 @@ export interface IndicatorPanelConfig {
   rules: IndicatorRule[]
 }
 
+export interface RawTopicViewerPanelConfig {
+  id: string
+  type: 'raw-topic-viewer'
+  topic: string
+  maxMessageLength: number
+  prettyPrint: boolean
+  showTimestamp: boolean
+}
+
 // Union type for all panel types (extensible for future panel types)
-export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig
+export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig | RawTopicViewerPanelConfig
 
 interface PanelsState {
   // File state
@@ -83,6 +92,7 @@ interface PanelsState {
   plotPanels: PlotPanelConfig[]
   gaugePanels: GaugePanelConfig[]
   indicatorPanels: IndicatorPanelConfig[]
+  rawTopicViewerPanels: RawTopicViewerPanelConfig[]
   
   // Actions
   loadFile: (file: File) => Promise<void>
@@ -117,6 +127,10 @@ interface PanelsState {
   removeIndicatorRule: (panelId: string, ruleId: string) => void
   reorderIndicatorRules: (panelId: string, startIndex: number, endIndex: number) => void
   
+  // Raw topic viewer panel specific
+  addRawTopicViewerPanel: () => void
+  updateRawTopicViewerPanel: (panelId: string, config: Partial<RawTopicViewerPanelConfig>) => void
+  
   // Data access
   getMessagesForTopic: (topic: string, startTime?: bigint, endTime?: bigint) => McapMessage[]
   getDeserializedMessage: (message: McapMessage) => any
@@ -140,6 +154,7 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   plotPanels: [],
   gaugePanels: [],
   indicatorPanels: [],
+  rawTopicViewerPanels: [],
   
   // Load MCAP file
   loadFile: async (file: File) => {
@@ -264,7 +279,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       panels: state.panels.filter(p => p.id !== panelId),
       plotPanels: state.plotPanels.filter(p => p.id !== panelId),
       gaugePanels: state.gaugePanels.filter(p => p.id !== panelId),
-      indicatorPanels: state.indicatorPanels.filter(p => p.id !== panelId)
+      indicatorPanels: state.indicatorPanels.filter(p => p.id !== panelId),
+      rawTopicViewerPanels: state.rawTopicViewerPanels.filter(p => p.id !== panelId)
     }))
   },
   
@@ -509,6 +525,35 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         )
       }
     })
+  },
+  
+  // Raw topic viewer panel specific
+  addRawTopicViewerPanel: () => {
+    const defaultTopic = get().metadata?.topics[0]?.name || ''
+    const newPanel: RawTopicViewerPanelConfig = {
+      id: `panel-${Date.now()}-${Math.random()}`,
+      type: 'raw-topic-viewer',
+      topic: defaultTopic,
+      maxMessageLength: 5000,
+      prettyPrint: true,
+      showTimestamp: true
+    }
+    
+    set((state) => ({
+      panels: [...state.panels, newPanel],
+      rawTopicViewerPanels: [...state.rawTopicViewerPanels, newPanel]
+    }))
+  },
+  
+  updateRawTopicViewerPanel: (panelId: string, config: Partial<RawTopicViewerPanelConfig>) => {
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'raw-topic-viewer' ? { ...p, ...config } as RawTopicViewerPanelConfig : p
+      ),
+      rawTopicViewerPanels: state.rawTopicViewerPanels.map(p =>
+        p.id === panelId ? { ...p, ...config } as RawTopicViewerPanelConfig : p
+      )
+    }))
   },
   
   // Data access
