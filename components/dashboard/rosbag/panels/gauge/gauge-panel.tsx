@@ -125,3 +125,4 @@ export function GaugePanel({ panelConfig }: GaugePanelProps) {
   )
 }
 
+

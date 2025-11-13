@@ -131,3 +131,4 @@ export function GaugeDisplay({ value, config }: GaugeDisplayProps) {
   )
 }
 
+

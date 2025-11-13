@@ -1,5 +1,5 @@
 import React from "react";
-import Test from "@/components/dashboard/advanced/dashboards/test";
+import Test from "@/components/dashboard/advanced/layouts/core/test";
 
 const DashboardsPage = () => {
   return <Test />;

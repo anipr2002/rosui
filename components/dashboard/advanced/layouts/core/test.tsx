@@ -1,12 +1,15 @@
 "use client";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useEffect } from "react";
 
 import { PageTabs } from "./page-tabs";
 import { PanelGrid } from "./panel-grid";
 import { LAYOUTS, PANEL_COLORS } from "./constants";
 import { useDashboardPagesStore } from "@/store/dashboard-pages-store";
+import { useTopicsStore } from "@/store/topic-store";
 import { Plus } from "lucide-react";
 import type { Panel } from "./types";
+import { ProfilerWrapper } from "@/lib/performance";
+import { usePageSubscriptions } from "@/hooks/use-page-subscriptions";
 
 export default function PanelLayoutManager() {
   const { 
@@ -14,6 +17,16 @@ export default function PanelLayoutManager() {
     activePageId,
     updatePagePanels
   } = useDashboardPagesStore();
+  
+  const { getTopicsList } = useTopicsStore();
+  
+  // Manage page-based subscriptions (unsubscribe when switching pages)
+  usePageSubscriptions();
+  
+  // Load topics when component mounts
+  useEffect(() => {
+    getTopicsList();
+  }, [getTopicsList]);
   
   const activePage = useMemo(
     () => pages.find((p) => p.id === activePageId) || null,
@@ -77,6 +90,16 @@ export default function PanelLayoutManager() {
     );
   }, [activePage, updatePagePanels]);
 
+  const handleUpdatePanel = useCallback((panelId: string, updates: Partial<Panel>) => {
+    if (!activePage) return;
+    updatePagePanels(
+      activePage.id,
+      activePage.panels.map((panel) =>
+        panel.id === panelId ? { ...panel, ...updates } : panel
+      )
+    );
+  }, [activePage, updatePagePanels]);
+
   const handlePanelsChange = useCallback((newPanels: Panel[]) => {
     if (!activePage) return;
     updatePagePanels(activePage.id, newPanels);
@@ -85,26 +108,33 @@ export default function PanelLayoutManager() {
   const maxCols = LAYOUTS[currentLayout].cols;
 
   return (
-    <div className="w-full mx-auto py-4 px-4 relative">
-      <PageTabs />
+    <ProfilerWrapper id="PanelLayoutManager">
+      <div className="w-full mx-auto py-4 px-4 relative">
+        <ProfilerWrapper id="PageTabs">
+          <PageTabs />
+        </ProfilerWrapper>
 
-      <PanelGrid
-        panels={panels}
-        maxCols={maxCols}
-        onPanelsChange={handlePanelsChange}
-        onDeletePanel={handleDeletePanel}
-        onResizePanel={handleResizePanel}
-        onChangePanelType={handleChangePanelType}
-      />
+        <ProfilerWrapper id="PanelGrid">
+          <PanelGrid
+            panels={panels}
+            maxCols={maxCols}
+            onPanelsChange={handlePanelsChange}
+            onDeletePanel={handleDeletePanel}
+            onResizePanel={handleResizePanel}
+            onChangePanelType={handleChangePanelType}
+            onUpdatePanel={handleUpdatePanel}
+          />
+        </ProfilerWrapper>
 
-      {/* Floating Add Panel Button */}
-      <button
-        onClick={handleAddPanel}
-        className="fixed bottom-8 right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition-all hover:scale-105 z-50"
-        title="Add Panel"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
-    </div>
+        {/* Floating Add Panel Button */}
+        <button
+          onClick={handleAddPanel}
+          className="fixed bottom-8 right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition-all hover:scale-105 z-50"
+          title="Add Panel"
+        >
+          <Plus className="h-6 w-6" />
+        </button>
+      </div>
+    </ProfilerWrapper>
   );
 }

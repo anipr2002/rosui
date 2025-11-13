@@ -30,23 +30,25 @@ export const LAYOUTS: Record<LayoutType, LayoutConfig> = {
   },
 };
 
+// Live panel types that are currently implemented
 export const PANEL_TYPES = [
-  "Audio Panel",
-  "Gauge Panel",
-  "Image Panel",
-  "Indicator Panel",
-  "Map Panel",
-  "Markdown Panel",
-  "Parameters Panel",
   "Plot Panel",
-  "Publish Panel",
-  "Raw Messages Panel",
-  "Service Call Panel",
-  "State Transitions Panel",
-  "Table Panel",
-  "Teleop Panel",
-  "Transform Tree Panel",
-  "Variable Slider Panel",
+  // Future panel types to implement:
+  // "Gauge Panel",
+  // "Indicator Panel",
+  // "Raw Messages Panel",
+  // "Image Panel",
+  // "Map Panel",
+  // "Table Panel",
+  // "Audio Panel",
+  // "Markdown Panel",
+  // "Parameters Panel",
+  // "Publish Panel",
+  // "Service Call Panel",
+  // "State Transitions Panel",
+  // "Teleop Panel",
+  // "Transform Tree Panel",
+  // "Variable Slider Panel",
 ];
 
 export const PANEL_COLORS = [

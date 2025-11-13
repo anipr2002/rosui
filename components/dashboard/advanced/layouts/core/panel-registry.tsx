@@ -1,5 +1,6 @@
 import React from "react";
 import type { PanelTypeInfo } from "./types";
+import { LivePlotPanel } from "../panels/plot";
 
 class PanelRegistry {
   private panels = new Map<string, PanelTypeInfo>();
@@ -62,4 +63,10 @@ export const panelRegistry = new PanelRegistry();
 panelRegistry.register("Default", {
   name: "Default Panel",
   component: undefined, // Uses default renderer
+});
+
+// Register live panels
+panelRegistry.register("Plot Panel", {
+  name: "Plot Panel",
+  component: LivePlotPanel,
 });

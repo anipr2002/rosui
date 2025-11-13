@@ -13,16 +13,69 @@ import { panelRegistry } from "./panel-registry";
 import { PANEL_TYPES } from "./constants";
 import type { Panel } from "./types";
 
+// Memoized context menu component
+const PanelContextMenu = React.memo<{
+  children: React.ReactNode;
+  onChangePanelType: (panelType: string) => void;
+}>(({ children, onChangePanelType }) => {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent>
+        {PANEL_TYPES.map((panelType) => (
+          <ContextMenuItem
+            key={panelType}
+            onClick={() => onChangePanelType(panelType)}
+          >
+            {panelType}
+          </ContextMenuItem>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+});
+
+PanelContextMenu.displayName = "PanelContextMenu";
+
 interface SortablePanelProps {
   panel: Panel;
   onDelete: (id: string) => void;
   onResize: (id: string, colspan: number, rowspan: number) => void;
   onChangePanelType: (id: string, panelType: string) => void;
+  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void;
   maxCols: number;
 }
 
+// Custom comparison function for SortablePanel
+const arePropsEqual = (
+  prevProps: SortablePanelProps,
+  nextProps: SortablePanelProps
+) => {
+  // Deep comparison for panel to prevent unnecessary re-renders
+  return (
+    prevProps.panel.id === nextProps.panel.id &&
+    prevProps.panel.panelType === nextProps.panel.panelType &&
+    prevProps.panel.colspan === nextProps.panel.colspan &&
+    prevProps.panel.rowspan === nextProps.panel.rowspan &&
+    prevProps.panel.color === nextProps.panel.color &&
+    JSON.stringify(prevProps.panel.config) === JSON.stringify(nextProps.panel.config) &&
+    prevProps.maxCols === nextProps.maxCols &&
+    prevProps.onDelete === nextProps.onDelete &&
+    prevProps.onResize === nextProps.onResize &&
+    prevProps.onChangePanelType === nextProps.onChangePanelType &&
+    prevProps.onUpdatePanel === nextProps.onUpdatePanel
+  );
+};
+
 const SortablePanel = React.memo<SortablePanelProps>(
-  ({ panel, onDelete, onResize, onChangePanelType, maxCols }) => {
+  ({
+    panel,
+    onDelete,
+    onResize,
+    onChangePanelType,
+    onUpdatePanel,
+    maxCols,
+  }) => {
     const [isResizing, setIsResizing] = useState(false);
     const [resizeEdge, setResizeEdge] = useState<
       "right" | "bottom" | "corner" | null
@@ -127,21 +180,23 @@ const SortablePanel = React.memo<SortablePanelProps>(
 
     const panelContent = useMemo(() => {
       return panelRegistry.renderPanel(panel.panelType, {
+        panel,
+        onUpdatePanel,
+        onDelete: handleDelete,
         colspan: panel.colspan,
         rowspan: panel.rowspan,
       });
-    }, [panel.panelType, panel.colspan, panel.rowspan]);
+    }, [panel, onUpdatePanel, handleDelete]);
 
     return (
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            ref={setNodeRef}
-            style={style}
-            className={`${panel.color} border-2 rounded-xl shadow-none min-h-[250px] relative group ${
-              isDragging ? "ring-2 ring-indigo-500 ring-offset-2" : ""
-            } ${isResizing ? "ring-2 ring-blue-400" : ""}`}
-          >
+      <PanelContextMenu onChangePanelType={handleChangePanelType}>
+        <div
+          ref={setNodeRef}
+          style={style}
+          className={`${panel.color} border-2 rounded-xl shadow-none min-h-[250px] relative group ${
+            isDragging ? "ring-2 ring-indigo-500 ring-offset-2" : ""
+          } ${isResizing ? "ring-2 ring-blue-400" : ""}`}
+        >
           {/* Drag Handle */}
           <div
             {...attributes}
@@ -152,73 +207,54 @@ const SortablePanel = React.memo<SortablePanelProps>(
             <GripVertical className="h-4 w-4 text-gray-600" />
           </div>
 
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            onContextMenu={(e) => e.preventDefault()}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-white/90 backdrop-blur-sm shadow-sm hover:bg-red-50 border border-transparent hover:border-red-200 z-10"
-          >
-            <Trash2 className="h-4 w-4 text-red-600" />
-          </button>
-
-            {/* Right Edge Resize Handle */}
-            {canIncreaseColspan && (
-              <div
-                onMouseDown={(e) => handleResizeStart(e, "right")}
-                onContextMenu={(e) => e.preventDefault()}
-                className="absolute top-0 right-0 w-2 h-full rounded-full cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
-                style={{
-                  background:
-                    "linear-gradient(to right, transparent, rgba(59, 130, 246, 0.5))",
-                }}
-              >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-blue-500 rounded-l" />
-              </div>
-            )}
-
-            {/* Bottom Edge Resize Handle */}
-            {canIncreaseRowspan && (
-              <div
-                onMouseDown={(e) => handleResizeStart(e, "bottom")}
-                onContextMenu={(e) => e.preventDefault()}
-                className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
-                style={{
-                  background:
-                    "linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.5))",
-                }}
-              >
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-1 w-12 bg-blue-500 rounded-t" />
-              </div>
-            )}
-
-            {/* Corner Resize Handle */}
-            {canShowCornerResize && (
-              <div
-                onMouseDown={(e) => handleResizeStart(e, "corner")}
-                onContextMenu={(e) => e.preventDefault()}
-                className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-30"
-              >
-                <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-blue-500 rounded-br" />
-              </div>
-            )}
-
-            {/* Panel Content */}
-            {panelContent}
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          {PANEL_TYPES.map((panelType) => (
-            <ContextMenuItem
-              key={panelType}
-              onClick={() => handleChangePanelType(panelType)}
+          {/* Right Edge Resize Handle */}
+          {canIncreaseColspan && (
+            <div
+              onMouseDown={(e) => handleResizeStart(e, "right")}
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute top-0 right-0 w-2 h-full rounded-full cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
+              style={{
+                background:
+                  "linear-gradient(to right, transparent, rgba(59, 130, 246, 0.5))",
+              }}
             >
-              {panelType}
-            </ContextMenuItem>
-          ))}
-        </ContextMenuContent>
-      </ContextMenu>
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-blue-500 rounded-l" />
+            </div>
+          )}
+
+          {/* Bottom Edge Resize Handle */}
+          {canIncreaseRowspan && (
+            <div
+              onMouseDown={(e) => handleResizeStart(e, "bottom")}
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
+              style={{
+                background:
+                  "linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.5))",
+              }}
+            >
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-1 w-12 bg-blue-500 rounded-t" />
+            </div>
+          )}
+
+          {/* Corner Resize Handle */}
+          {canShowCornerResize && (
+            <div
+              onMouseDown={(e) => handleResizeStart(e, "corner")}
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-30"
+            >
+              <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-blue-500 rounded-br" />
+            </div>
+          )}
+
+          {/* Panel Content */}
+          {panelContent}
+        </div>
+      </PanelContextMenu>
     );
-  }
+  },
+  arePropsEqual
 );
 
 SortablePanel.displayName = "SortablePanel";

@@ -26,6 +26,7 @@ interface PanelGridProps {
   onDeletePanel: (id: string) => void;
   onResizePanel: (id: string, colspan: number, rowspan: number) => void;
   onChangePanelType: (id: string, panelType: string) => void;
+  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void;
 }
 
 const PanelGrid = React.memo<PanelGridProps>(
@@ -36,6 +37,7 @@ const PanelGrid = React.memo<PanelGridProps>(
     onDeletePanel,
     onResizePanel,
     onChangePanelType,
+    onUpdatePanel,
   }) => {
     const sensors = useSensors(
       useSensor(PointerSensor, {
@@ -62,7 +64,15 @@ const PanelGrid = React.memo<PanelGridProps>(
       [panels, onPanelsChange]
     );
 
+    // Stable panel IDs to prevent SortableContext re-renders
     const panelIds = useMemo(() => panels.map((p) => p.id), [panels]);
+
+    // Create stable panel keys including config hash to force re-render only when needed
+    const panelKeys = useMemo(() => {
+      return panels.map(
+        (p) => `${p.id}-${p.panelType}-${p.colspan}-${p.rowspan}`
+      );
+    }, [panels]);
 
     if (panels.length === 0) {
       return (
@@ -98,6 +108,7 @@ const PanelGrid = React.memo<PanelGridProps>(
                 onDelete={onDeletePanel}
                 onResize={onResizePanel}
                 onChangePanelType={onChangePanelType}
+                onUpdatePanel={onUpdatePanel}
                 maxCols={maxCols}
               />
             ))}
@@ -105,6 +116,47 @@ const PanelGrid = React.memo<PanelGridProps>(
         </SortableContext>
       </DndContext>
     );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison to prevent unnecessary re-renders
+    // Re-render only if panels array length or individual panels changed
+    if (prevProps.panels.length !== nextProps.panels.length) {
+      return false;
+    }
+
+    if (prevProps.maxCols !== nextProps.maxCols) {
+      return false;
+    }
+
+    // Check if callback references changed (they should be stable with useCallback)
+    if (
+      prevProps.onPanelsChange !== nextProps.onPanelsChange ||
+      prevProps.onDeletePanel !== nextProps.onDeletePanel ||
+      prevProps.onResizePanel !== nextProps.onResizePanel ||
+      prevProps.onChangePanelType !== nextProps.onChangePanelType ||
+      prevProps.onUpdatePanel !== nextProps.onUpdatePanel
+    ) {
+      return false;
+    }
+
+    // Deep comparison of panels - check if any panel changed
+    for (let i = 0; i < prevProps.panels.length; i++) {
+      const prevPanel = prevProps.panels[i];
+      const nextPanel = nextProps.panels[i];
+
+      if (
+        prevPanel.id !== nextPanel.id ||
+        prevPanel.panelType !== nextPanel.panelType ||
+        prevPanel.colspan !== nextPanel.colspan ||
+        prevPanel.rowspan !== nextPanel.rowspan ||
+        prevPanel.color !== nextPanel.color ||
+        JSON.stringify(prevPanel.config) !== JSON.stringify(nextPanel.config)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   }
 );
 
