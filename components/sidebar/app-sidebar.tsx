@@ -129,16 +129,16 @@ const sidebarData = {
       ],
     },
     {
-      title: "Data Management",
+      title: "Workflows",
       url: "#",
       icon: Settings2,
       items: [
         {
-          title: "Recordings",
-          url: "#",
+          title: "Data Processing",
+          url: "/dashboard/workflows/data-processing",
         },
         {
-          title: "Analytics",
+          title: "State Machine",
           url: "#",
         },
       ],
