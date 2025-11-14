@@ -1,6 +1,7 @@
 import React from "react";
 import type { PanelTypeInfo } from "./types";
 import { LivePlotPanel } from "../panels/plot";
+import { LiveImagePanel } from "../panels/image";
 
 class PanelRegistry {
   private panels = new Map<string, PanelTypeInfo>();
@@ -69,4 +70,9 @@ panelRegistry.register("Default", {
 panelRegistry.register("Plot Panel", {
   name: "Plot Panel",
   component: LivePlotPanel,
+});
+
+panelRegistry.register("Image Panel", {
+  name: "Image Panel",
+  component: LiveImagePanel,
 });

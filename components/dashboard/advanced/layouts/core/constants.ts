@@ -33,11 +33,11 @@ export const LAYOUTS: Record<LayoutType, LayoutConfig> = {
 // Live panel types that are currently implemented
 export const PANEL_TYPES = [
   "Plot Panel",
+  "Image Panel",
   // Future panel types to implement:
   // "Gauge Panel",
   // "Indicator Panel",
   // "Raw Messages Panel",
-  // "Image Panel",
   // "Map Panel",
   // "Table Panel",
   // "Audio Panel",
