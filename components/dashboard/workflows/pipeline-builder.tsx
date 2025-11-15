@@ -948,7 +948,7 @@ export function PipelineBuilder() {
         output: "Output",
         humanIntervention: "Human Check",
       };
-    const newNode: WorkflowNode = {
+      const newNode: WorkflowNode = {
         id,
         type,
         position,
@@ -974,24 +974,24 @@ export function PipelineBuilder() {
       if (!nodeToDuplicate) return;
 
       const newId = generateNodeId(nodeToDuplicate.data.nodeType);
-    const duplicatedNode: WorkflowNode = {
-      ...nodeToDuplicate,
-      id: newId,
-      position: {
-        x: nodeToDuplicate.position.x + 40,
-        y: nodeToDuplicate.position.y + 40,
-      },
-      data: {
-        ...nodeToDuplicate.data,
-        label: `${nodeToDuplicate.data.label} (copy)`,
-        stats: defaultStats(),
-        status: "idle",
-      },
-      style: {
-        ...baseNodeStyle,
-        ...(nodeToDuplicate.style || {}),
-      },
-    };
+      const duplicatedNode: WorkflowNode = {
+        ...nodeToDuplicate,
+        id: newId,
+        position: {
+          x: nodeToDuplicate.position.x + 40,
+          y: nodeToDuplicate.position.y + 40,
+        },
+        data: {
+          ...nodeToDuplicate.data,
+          label: `${nodeToDuplicate.data.label} (copy)`,
+          stats: defaultStats(),
+          status: "idle",
+        },
+        style: {
+          ...baseNodeStyle,
+          ...(nodeToDuplicate.style || {}),
+        },
+      };
       setNodes((current) => [...current, duplicatedNode]);
       saveHistory();
       toast.success(`Duplicated ${nodeToDuplicate.data.label}`);
@@ -1418,33 +1418,6 @@ export function PipelineBuilder() {
       />
 
       <Card className="shadow-none pt-0 rounded-xl border border-teal-200">
-        <CardHeader className="bg-white border-b border-teal-100 pt-6 rounded-t-xl">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-teal-600" />
-              <div>
-                <h3 className="text-base font-semibold text-teal-900">
-                  React Flow workspace
-                </h3>
-                <p className="text-xs text-teal-800">
-                  Drag handles to connect nodes. Animated edges indicate live
-                  data flow.
-                </p>
-              </div>
-            </div>
-            <Badge
-              variant="outline"
-              className={`text-xs ${
-                isRunning
-                  ? "bg-green-50 text-green-700 border-green-200"
-                  : "bg-gray-50 text-gray-600 border-gray-200"
-              }`}
-            >
-              {isRunning ? "Pipeline running" : "Pipeline idle"}
-            </Badge>
-          </div>
-        </CardHeader>
-
         <CardContent className="px-0 py-0">
           {(!isConnected || isLoadingTopics || isLoadingServices) && (
             <div className="px-6 pt-6">
@@ -1466,7 +1439,7 @@ export function PipelineBuilder() {
             </div>
           )}
 
-          <div style={{ height: 720 }} className="relative">
+          <div style={{ height: "calc(100vh - 50px)" }} className="relative">
             {nodes.length === 0 && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-10 text-center max-w-md">

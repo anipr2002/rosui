@@ -110,15 +110,15 @@ export function ProcessNode({ id, data }: NodeProps<WorkflowNodeData>) {
   if (!isExpanded) {
     return (
       <div
-        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        className="relative cursor-pointer transition-all duration-300 ease-in-out w-fit"
         onClick={handleNodeClick}
       >
         <div
           className="w-14 h-14 bg-purple-50 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative"
-          style={{
-            clipPath:
-              "polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)",
-          }}
+          //  style={{
+          //   clipPath:
+          //     "polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)",
+          // }}
         >
           <Handle
             type="target"

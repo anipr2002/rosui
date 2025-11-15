@@ -1,20 +1,23 @@
-"use client"
+"use client";
 
-import React, { useMemo } from "react"
-import { Handle, Position, type NodeProps } from "reactflow"
-import { UserCheck, Trash2, Copy, X, CheckCircle, XCircle } from "lucide-react"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { useWorkflowCanvas } from "../workflow-context"
-import type { HumanInterventionNodeConfig, WorkflowNodeData } from "../types"
+import React, { useMemo } from "react";
+import { Handle, Position, type NodeProps } from "reactflow";
+import { UserCheck, Trash2, Copy, X, CheckCircle, XCircle } from "lucide-react";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useWorkflowCanvas } from "../workflow-context";
+import type { HumanInterventionNodeConfig, WorkflowNodeData } from "../types";
 
-export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>) {
+export function HumanInterventionNode({
+  id,
+  data,
+}: NodeProps<WorkflowNodeData>) {
   const {
     updateHumanInterventionConfig,
     updateLabel,
@@ -27,15 +30,15 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
     rejectNode,
     expandedNodeId,
     setExpandedNode,
-  } = useWorkflowCanvas()
-  
-  const isExpanded = expandedNodeId === id
-  const config = data.config as HumanInterventionNodeConfig
-  const liveMessages = getLiveMessages(id)
+  } = useWorkflowCanvas();
 
-  const isPending = data.status === 'pending'
-  const isApproved = data.status === 'approved'
-  const isRejected = data.status === 'rejected'
+  const isExpanded = expandedNodeId === id;
+  const config = data.config as HumanInterventionNodeConfig;
+  const liveMessages = getLiveMessages(id);
+
+  const isPending = data.status === "pending";
+  const isApproved = data.status === "approved";
+  const isRejected = data.status === "rejected";
 
   const handleNodeClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -48,15 +51,15 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
   if (!isExpanded) {
     return (
       <div
-        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        className="relative cursor-pointer transition-all duration-300 ease-in-out w-fit"
         onClick={handleNodeClick}
       >
-        <div 
+        <div
           className="w-14 h-14 bg-amber-50 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative"
-          style={{
-            clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
-            transform: 'rotate(45deg)'
-          }}
+          // style={{
+          //   clipPath: "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)",
+          //   transform: "rotate(45deg)",
+          // }}
         >
           <Handle
             type="target"
@@ -68,9 +71,7 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
             position={Position.Right}
             className="w-2 h-2 bg-amber-500 border-2 border-white shadow"
           />
-          <div style={{ transform: 'rotate(-45deg)' }}>
-            <UserCheck className="h-6 w-6 text-amber-600" />
-          </div>
+          <UserCheck className="h-6 w-6 text-amber-600" />
         </div>
         {data.label && (
           <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-600 truncate max-w-[80px]">
@@ -92,7 +93,7 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
 
   // Expanded view - Full form
   return (
-    <Card 
+    <Card
       className="relative shadow-none pt-0 rounded-xl border border-amber-200 transition-all duration-300 ease-in-out overflow-hidden"
       onClick={(e) => e.stopPropagation()}
     >
@@ -124,12 +125,12 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
             variant="outline"
             className={`justify-self-end text-[10px] capitalize ${
               isPending
-                ? 'bg-amber-100 text-amber-700 border-amber-300'
+                ? "bg-amber-100 text-amber-700 border-amber-300"
                 : isApproved
-                  ? 'bg-green-100 text-green-700 border-green-300'
+                  ? "bg-green-100 text-green-700 border-green-300"
                   : isRejected
-                    ? 'bg-red-100 text-red-700 border-red-300'
-                    : ''
+                    ? "bg-red-100 text-red-700 border-red-300"
+                    : ""
             }`}
           >
             {data.status}
@@ -312,7 +313,7 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
                         variant="outline"
                         className="text-[10px] bg-amber-50 text-amber-700 border-amber-200"
                       >
-                        {msg.type || 'human-intervention'}
+                        {msg.type || "human-intervention"}
                       </Badge>
                       <div className="text-[10px] text-gray-500">
                         {new Date(msg.timestamp).toLocaleTimeString()}
@@ -329,6 +330,5 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
         </Tabs>
       </CardContent>
     </Card>
-  )
+  );
 }
-

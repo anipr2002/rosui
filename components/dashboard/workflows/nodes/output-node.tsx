@@ -115,7 +115,7 @@ export function OutputNode({ id, data }: NodeProps<WorkflowNodeData>) {
   if (!isExpanded) {
     return (
       <div
-        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        className="relative cursor-pointer transition-all duration-300 ease-in-out w-fit"
         onClick={handleNodeClick}
         style={{ borderWidth: 0, padding: 0, background: "transparent" }}
       >
