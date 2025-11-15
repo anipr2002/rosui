@@ -26,12 +26,14 @@ import { WorkflowToolbar } from "./workflow-toolbar";
 import { InputNode } from "./nodes/input-node";
 import { ProcessNode } from "./nodes/process-node";
 import { OutputNode } from "./nodes/output-node";
+import { HumanInterventionNode } from "./nodes/human-intervention-node";
 import { WorkflowCanvasProvider } from "./workflow-context";
 import { PerformancePanel } from "./performance-panel";
 import type {
   InputNodeConfig,
   OutputNodeConfig,
   ProcessNodeConfig,
+  HumanInterventionNodeConfig,
   WorkflowEdge,
   WorkflowNode,
   WorkflowNodeData,
@@ -39,6 +41,7 @@ import type {
   WorkflowStats,
   LiveMessage,
   HistoryEntry,
+  BranchCondition,
 } from "./types";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,13 +82,17 @@ const defaultStats = (): WorkflowStats => ({
 
 const defaultConfig: Record<
   WorkflowNodeType,
-  () => InputNodeConfig | ProcessNodeConfig | OutputNodeConfig
+  () => InputNodeConfig | ProcessNodeConfig | OutputNodeConfig | HumanInterventionNodeConfig
 > = {
   input: () => ({
     topicName: undefined,
     topicType: undefined,
     bufferSize: 50,
     autoStart: true,
+    executionEnabled: false,
+    executionType: 'publish',
+    executionTarget: '',
+    executionMessage: '',
   }),
   process: () => ({
     operation: "passThrough",
@@ -95,6 +102,7 @@ const defaultConfig: Record<
     filterValue: "",
     fieldMappings: [],
     multiConditions: [],
+    branchConditions: [],
   }),
   output: () => ({
     mode: "publish",
@@ -103,12 +111,20 @@ const defaultConfig: Record<
     autoPublish: true,
     customMessage: "",
   }),
+  humanIntervention: () => ({
+    instructions: "Review the data and approve to continue",
+    requiresApproval: true,
+    timeoutSeconds: undefined,
+    branchConditions: [],
+    autoApprove: false,
+  }),
 };
 
 const nodeTypesMap = {
   input: InputNode,
   process: ProcessNode,
   output: OutputNode,
+  humanIntervention: HumanInterventionNode,
 };
 
 function generateNodeId(prefix: WorkflowNodeType) {
@@ -193,6 +209,7 @@ export function PipelineBuilder() {
   const queueBusyRef = useRef(false);
   const lastMessageRef = useRef<Record<string, number>>({});
   const throttleRef = useRef<Record<string, number>>({});
+  const pendingApprovalsRef = useRef<Map<string, { payload: any; visited: Set<string> }>>(new Map());
   const aggregateRef = useRef<Record<string, any[]>>({});
   const activeSubscribersRef = useRef<Set<string>>(new Set());
   const activePublishersRef = useRef<Set<string>>(new Set());
@@ -658,6 +675,31 @@ export function PipelineBuilder() {
     []
   );
 
+  const evaluateBranchCondition = useCallback(
+    (condition: BranchCondition, payload: any): boolean => {
+      const fieldValue = getValueAtPath(payload, condition.field);
+      if (fieldValue === undefined) return false;
+
+      switch (condition.operator) {
+        case '=':
+          return fieldValue == condition.value;
+        case '!=':
+          return fieldValue != condition.value;
+        case '>':
+          return Number(fieldValue) > Number(condition.value);
+        case '<':
+          return Number(fieldValue) < Number(condition.value);
+        case '>=':
+          return Number(fieldValue) >= Number(condition.value);
+        case '<=':
+          return Number(fieldValue) <= Number(condition.value);
+        default:
+          return false;
+      }
+    },
+    []
+  );
+
   const runWorkflowStep = useCallback(
     (startNodeId: string, payload: any) => {
       const queue: Array<{
@@ -676,9 +718,71 @@ export function PipelineBuilder() {
         if (!node) continue;
         markNodeActive(node.id);
 
-        // Track input messages
+        // Track input messages and execute input actions
         if (node.data.nodeType === "input") {
           addLiveMessage(node.id, current.payload, "input");
+          
+          // Execute input action if enabled
+          const inputConfig = node.data.config as InputNodeConfig;
+          if (inputConfig.executionEnabled && inputConfig.executionTarget) {
+            try {
+              let messageToSend = current.payload;
+              if (inputConfig.executionMessage) {
+                try {
+                  messageToSend = JSON.parse(inputConfig.executionMessage);
+                } catch (e) {
+                  console.error("Invalid execution message JSON:", e);
+                }
+              }
+
+              if (inputConfig.executionType === 'publish') {
+                publishMessage(inputConfig.executionTarget, messageToSend);
+                toast.success(`Published to ${inputConfig.executionTarget}`);
+              } else if (inputConfig.executionType === 'service') {
+                callService(inputConfig.executionTarget, messageToSend).then(() => {
+                  toast.success(`Called service ${inputConfig.executionTarget}`);
+                }).catch((err) => {
+                  toast.error(`Service call failed: ${err.message}`);
+                });
+              }
+            } catch (error) {
+              console.error("Input execution error:", error);
+              toast.error("Input execution failed");
+            }
+          }
+        }
+
+        // Handle human intervention nodes
+        if (node.data.nodeType === "humanIntervention") {
+          const hiConfig = node.data.config as HumanInterventionNodeConfig;
+          addLiveMessage(node.id, current.payload, "input");
+          
+          if (hiConfig.requiresApproval) {
+            // Store pending approval with payload and continuation state
+            pendingApprovalsRef.current.set(node.id, {
+              payload: current.payload,
+              visited: current.visited,
+            });
+            
+            // Update node status to pending
+            setNodes((nodes) =>
+              nodes.map((n) =>
+                n.id === node.id
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        status: "pending" as const,
+                      },
+                    }
+                  : n
+              )
+            );
+            
+            // Pause workflow execution for this branch
+            toast.info(`Waiting for approval: ${node.data.label}`);
+            continue;
+          }
         }
 
         if (node.data.nodeType === "output") {
@@ -701,16 +805,46 @@ export function PipelineBuilder() {
         const outgoing = edgesRef.current.filter(
           (edge) => edge.source === node.id
         );
-        outgoing.forEach((edge) => {
-          queue.push({
-            nodeId: edge.target,
-            payload: nextPayload,
-            visited: new Set(current.visited),
+
+        // Handle conditional branching
+        const config = node.data.config as ProcessNodeConfig | HumanInterventionNodeConfig;
+        const branchConditions = config.branchConditions || [];
+        
+        if (branchConditions.length > 0) {
+          // Only follow edges that match their conditions
+          outgoing.forEach((edge) => {
+            const edgeCondition = branchConditions.find((c) => c.edgeId === edge.id);
+            if (edgeCondition) {
+              // Edge has a condition, evaluate it
+              if (evaluateBranchCondition(edgeCondition, nextPayload)) {
+                queue.push({
+                  nodeId: edge.target,
+                  payload: nextPayload,
+                  visited: new Set(current.visited),
+                });
+              }
+            } else {
+              // No condition for this edge, follow it (default branch)
+              queue.push({
+                nodeId: edge.target,
+                payload: nextPayload,
+                visited: new Set(current.visited),
+              });
+            }
           });
-        });
+        } else {
+          // No branch conditions, follow all edges
+          outgoing.forEach((edge) => {
+            queue.push({
+              nodeId: edge.target,
+              payload: nextPayload,
+              visited: new Set(current.visited),
+            });
+          });
+        }
       }
     },
-    [applyProcessOperation, markNodeActive, pushToOutput, addLiveMessage]
+    [applyProcessOperation, markNodeActive, pushToOutput, addLiveMessage, evaluateBranchCondition, setNodes, publishMessage, callService]
   );
 
   const scheduleQueueProcessing = useCallback(() => {
@@ -757,12 +891,18 @@ export function PipelineBuilder() {
         x: 100 + nodes.length * 40,
         y: 80 + nodes.length * 60,
       };
+      const labelMap = {
+        input: 'Input',
+        process: 'Process',
+        output: 'Output',
+        humanIntervention: 'Human Check',
+      }
       const newNode: WorkflowNode = {
         id,
         type,
         position,
         data: {
-          label: `${type === "input" ? "Input" : type === "process" ? "Process" : "Output"} ${nodes.length + 1}`,
+          label: `${labelMap[type]} ${nodes.length + 1}`,
           nodeType: type,
           status: "idle",
           config: defaultConfig[type](),
@@ -886,6 +1026,79 @@ export function PipelineBuilder() {
     (nodeId: string, updater: (config: OutputNodeConfig) => OutputNodeConfig) =>
       updateNodeData<OutputNodeConfig>(nodeId, updater),
     [updateNodeData]
+  );
+
+  const updateHumanInterventionConfig = useCallback(
+    (nodeId: string, updater: (config: HumanInterventionNodeConfig) => HumanInterventionNodeConfig) =>
+      updateNodeData<HumanInterventionNodeConfig>(nodeId, updater),
+    [updateNodeData]
+  );
+
+  const approveNode = useCallback(
+    (nodeId: string) => {
+      const pending = pendingApprovalsRef.current.get(nodeId);
+      if (!pending) return;
+
+      // Update node status to approved
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: "approved" as const,
+                  stats: {
+                    ...node.data.stats,
+                    messageCount: node.data.stats.messageCount + 1,
+                    lastUpdated: Date.now(),
+                  },
+                },
+              }
+            : node
+        )
+      );
+
+      // Continue workflow execution
+      const outgoing = edgesRef.current.filter((edge) => edge.source === nodeId);
+      outgoing.forEach((edge) => {
+        messageQueueRef.current.push({
+          nodeId: edge.target,
+          payload: pending.payload,
+        });
+      });
+      
+      pendingApprovalsRef.current.delete(nodeId);
+      scheduleQueueProcessing();
+      toast.success("Node approved, continuing workflow");
+    },
+    [setNodes, scheduleQueueProcessing]
+  );
+
+  const rejectNode = useCallback(
+    (nodeId: string) => {
+      const pending = pendingApprovalsRef.current.get(nodeId);
+      if (!pending) return;
+
+      // Update node status to rejected
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === nodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  status: "rejected" as const,
+                },
+              }
+            : node
+        )
+      );
+
+      pendingApprovalsRef.current.delete(nodeId);
+      toast.error("Node rejected, workflow halted for this branch");
+    },
+    [setNodes]
   );
 
   const onConnect = useCallback(
@@ -1081,9 +1294,12 @@ export function PipelineBuilder() {
       updateInputConfig,
       updateProcessConfig,
       updateOutputConfig,
+      updateHumanInterventionConfig,
       updateLabel,
       removeNode,
       duplicateNode,
+      approveNode,
+      rejectNode,
       getLiveMessages,
       clearLiveMessages,
     }),
@@ -1094,9 +1310,12 @@ export function PipelineBuilder() {
       updateInputConfig,
       updateProcessConfig,
       updateOutputConfig,
+      updateHumanInterventionConfig,
       updateLabel,
       removeNode,
       duplicateNode,
+      approveNode,
+      rejectNode,
       getLiveMessages,
       clearLiveMessages,
     ]
@@ -1209,6 +1428,7 @@ export function PipelineBuilder() {
                   nodeColor={(node) => {
                     if (node.type === "input") return "#60a5fa";
                     if (node.type === "process") return "#a78bfa";
+                    if (node.type === "humanIntervention") return "#f59e0b";
                     return "#34d399";
                   }}
                   maskColor="rgba(15,118,110,0.1)"
@@ -1224,6 +1444,10 @@ export function PipelineBuilder() {
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-purple-500" />
                     Process
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 rounded-full bg-amber-500" />
+                    Human Check
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-green-500" />

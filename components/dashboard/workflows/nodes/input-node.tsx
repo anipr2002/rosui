@@ -16,6 +16,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useWorkflowCanvas } from "../workflow-context";
 import type { InputNodeConfig, WorkflowNodeData } from "../types";
@@ -67,12 +68,15 @@ export function InputNode({ id, data }: NodeProps<WorkflowNodeData>) {
 
         <CardContent className="px-6 py-4">
           <Tabs defaultValue="config" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="config" className="text-xs">
                 Config
               </TabsTrigger>
+              <TabsTrigger value="execution" className="text-xs">
+                Execution
+              </TabsTrigger>
               <TabsTrigger value="live" className="text-xs">
-                Live Data ({liveMessages.length})
+                Live ({liveMessages.length})
               </TabsTrigger>
             </TabsList>
 
@@ -191,6 +195,96 @@ export function InputNode({ id, data }: NodeProps<WorkflowNodeData>) {
                   Remove
                 </Button>
               </div>
+            </TabsContent>
+
+            <TabsContent value="execution" className="space-y-4 mt-0">
+              <div className="flex items-center justify-between border rounded-lg px-3 py-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-600">
+                    Enable execution
+                  </p>
+                  <p className="text-[10px] text-gray-500">
+                    Trigger actions on message receipt
+                  </p>
+                </div>
+                <Switch
+                  checked={config.executionEnabled || false}
+                  onCheckedChange={(checked) =>
+                    updateInputConfig(id, (prev) => ({
+                      ...prev,
+                      executionEnabled: checked,
+                    }))
+                  }
+                  disabled={isRunning}
+                />
+              </div>
+
+              {config.executionEnabled && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Execution type</Label>
+                    <Select
+                      value={config.executionType || 'publish'}
+                      onValueChange={(value) =>
+                        updateInputConfig(id, (prev) => ({
+                          ...prev,
+                          executionType: value as 'publish' | 'service',
+                        }))
+                      }
+                      disabled={isRunning}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="publish">Publish Topic</SelectItem>
+                        <SelectItem value="service">Call Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">
+                      {config.executionType === 'service' ? 'Service name' : 'Topic name'}
+                    </Label>
+                    <Input
+                      value={config.executionTarget || ''}
+                      onChange={(event) =>
+                        updateInputConfig(id, (prev) => ({
+                          ...prev,
+                          executionTarget: event.target.value,
+                        }))
+                      }
+                      placeholder={
+                        config.executionType === 'service'
+                          ? '/my_service'
+                          : '/my_topic'
+                      }
+                      className="h-9 text-sm"
+                      disabled={isRunning}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">
+                      Message template (JSON)
+                    </Label>
+                    <Textarea
+                      value={config.executionMessage || ''}
+                      onChange={(event) =>
+                        updateInputConfig(id, (prev) => ({
+                          ...prev,
+                          executionMessage: event.target.value,
+                        }))
+                      }
+                      placeholder='{"data": "value"}'
+                      className="text-xs font-mono"
+                      rows={4}
+                      disabled={isRunning}
+                    />
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="live" className="space-y-2 mt-0">

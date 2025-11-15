@@ -3,7 +3,7 @@
 import React, { createContext, useContext } from 'react'
 import type { TopicInfo } from '@/store/topic-store'
 import type { ServiceInfo } from '@/store/service-store'
-import type { InputNodeConfig, OutputNodeConfig, ProcessNodeConfig, LiveMessage } from './types'
+import type { InputNodeConfig, OutputNodeConfig, ProcessNodeConfig, HumanInterventionNodeConfig, LiveMessage } from './types'
 
 export interface WorkflowCanvasContextValue {
   topics: TopicInfo[]
@@ -12,9 +12,12 @@ export interface WorkflowCanvasContextValue {
   updateInputConfig: (nodeId: string, updater: (config: InputNodeConfig) => InputNodeConfig) => void
   updateProcessConfig: (nodeId: string, updater: (config: ProcessNodeConfig) => ProcessNodeConfig) => void
   updateOutputConfig: (nodeId: string, updater: (config: OutputNodeConfig) => OutputNodeConfig) => void
+  updateHumanInterventionConfig: (nodeId: string, updater: (config: HumanInterventionNodeConfig) => HumanInterventionNodeConfig) => void
   updateLabel: (nodeId: string, label: string) => void
   removeNode: (nodeId: string) => void
   duplicateNode: (nodeId: string) => void
+  approveNode: (nodeId: string) => void
+  rejectNode: (nodeId: string) => void
   getLiveMessages: (nodeId: string) => LiveMessage[]
   clearLiveMessages: (nodeId: string) => void
 }

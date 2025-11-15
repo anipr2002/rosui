@@ -1,7 +1,7 @@
 import type { Node, Edge } from 'reactflow'
 
-export type WorkflowNodeType = 'input' | 'process' | 'output'
-export type WorkflowStatus = 'idle' | 'configured' | 'active' | 'error'
+export type WorkflowNodeType = 'input' | 'process' | 'output' | 'humanIntervention'
+export type WorkflowStatus = 'idle' | 'configured' | 'active' | 'error' | 'pending' | 'approved' | 'rejected'
 
 export interface WorkflowStats {
   messageCount: number
@@ -15,6 +15,11 @@ export interface InputNodeConfig {
   topicType?: string
   bufferSize: number
   autoStart: boolean
+  // Execution actions
+  executionEnabled?: boolean
+  executionType?: 'publish' | 'service'
+  executionTarget?: string
+  executionMessage?: string
 }
 
 export type ProcessOperation = 
@@ -57,6 +62,13 @@ export interface FilterCondition {
   field: string
   operator: ComparisonOperator
   value: string | number
+}
+
+export interface BranchCondition {
+  field: string
+  operator: ComparisonOperator
+  value: string | number
+  edgeId?: string
 }
 
 export interface ProcessNodeConfig {
@@ -108,6 +120,9 @@ export interface ProcessNodeConfig {
   // Error tracking
   errors?: string[]
   warnings?: string[]
+  
+  // Conditional branching
+  branchConditions?: BranchCondition[]
 }
 
 export type OutputMode = 'publish' | 'service'
@@ -122,10 +137,19 @@ export interface OutputNodeConfig {
   autoPublish: boolean
 }
 
+export interface HumanInterventionNodeConfig {
+  instructions: string
+  requiresApproval: boolean
+  timeoutSeconds?: number
+  branchConditions?: BranchCondition[]
+  autoApprove?: boolean
+}
+
 export type WorkflowNodeConfig =
   | InputNodeConfig
   | ProcessNodeConfig
   | OutputNodeConfig
+  | HumanInterventionNodeConfig
 
 export interface WorkflowNodeData {
   label: string

@@ -156,6 +156,15 @@ export function WorkflowToolbar({
               <Plus className='h-4 w-4 mr-2' />
               Output node
             </Button>
+            <Button
+              type='button'
+              variant='outline'
+              className='bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+              onClick={() => onAddNode('humanIntervention')}
+            >
+              <Plus className='h-4 w-4 mr-2' />
+              Human Intervention
+            </Button>
           </div>
 
           <div className='flex flex-wrap gap-2 justify-start lg:justify-end'>
