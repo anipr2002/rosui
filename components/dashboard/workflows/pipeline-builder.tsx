@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { CSSProperties } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -131,6 +132,14 @@ const nodeTypesMap = {
   humanIntervention: HumanInterventionNode,
 };
 
+const baseNodeStyle: CSSProperties = {
+  width: 320,
+  border: "none",
+  background: "transparent",
+  boxShadow: "none",
+  padding: 0,
+};
+
 function generateNodeId(prefix: WorkflowNodeType) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -184,6 +193,7 @@ export function PipelineBuilder() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<WorkflowEdge>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | undefined>(undefined);
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const { status } = useRosStore();
   const isConnected = status === "connected";
 
@@ -270,7 +280,15 @@ export function PipelineBuilder() {
     try {
       const parsed = JSON.parse(stored);
       if (parsed?.nodes && parsed?.edges) {
-        setNodes(parsed.nodes);
+        setNodes(
+          parsed.nodes.map((node: WorkflowNode) => ({
+            ...node,
+            style: {
+              ...baseNodeStyle,
+              ...(node.style || {}),
+            },
+          }))
+        );
         setEdges(parsed.edges);
         setLastSavedAt(parsed.timestamp);
       }
@@ -930,7 +948,7 @@ export function PipelineBuilder() {
         output: "Output",
         humanIntervention: "Human Check",
       };
-      const newNode: WorkflowNode = {
+    const newNode: WorkflowNode = {
         id,
         type,
         position,
@@ -942,7 +960,7 @@ export function PipelineBuilder() {
           stats: defaultStats(),
           description: "",
         },
-        style: { width: 320 },
+        style: baseNodeStyle,
       };
       setNodes((current) => [...current, newNode]);
       saveHistory();
@@ -956,20 +974,24 @@ export function PipelineBuilder() {
       if (!nodeToDuplicate) return;
 
       const newId = generateNodeId(nodeToDuplicate.data.nodeType);
-      const duplicatedNode: WorkflowNode = {
-        ...nodeToDuplicate,
-        id: newId,
-        position: {
-          x: nodeToDuplicate.position.x + 40,
-          y: nodeToDuplicate.position.y + 40,
-        },
-        data: {
-          ...nodeToDuplicate.data,
-          label: `${nodeToDuplicate.data.label} (copy)`,
-          stats: defaultStats(),
-          status: "idle",
-        },
-      };
+    const duplicatedNode: WorkflowNode = {
+      ...nodeToDuplicate,
+      id: newId,
+      position: {
+        x: nodeToDuplicate.position.x + 40,
+        y: nodeToDuplicate.position.y + 40,
+      },
+      data: {
+        ...nodeToDuplicate.data,
+        label: `${nodeToDuplicate.data.label} (copy)`,
+        stats: defaultStats(),
+        status: "idle",
+      },
+      style: {
+        ...baseNodeStyle,
+        ...(nodeToDuplicate.style || {}),
+      },
+    };
       setNodes((current) => [...current, duplicatedNode]);
       saveHistory();
       toast.success(`Duplicated ${nodeToDuplicate.data.label}`);
@@ -1177,7 +1199,15 @@ export function PipelineBuilder() {
     }
     try {
       const parsed = JSON.parse(raw);
-      setNodes(parsed.nodes || []);
+      setNodes(
+        (parsed.nodes || []).map((node: WorkflowNode) => ({
+          ...node,
+          style: {
+            ...baseNodeStyle,
+            ...(node.style || {}),
+          },
+        }))
+      );
       setEdges(parsed.edges || []);
       setLastSavedAt(parsed.timestamp);
       toast.success("Workflow loaded");
@@ -1330,6 +1360,8 @@ export function PipelineBuilder() {
       topics,
       services,
       isRunning,
+      expandedNodeId,
+      setExpandedNode: setExpandedNodeId,
       updateInputConfig,
       updateProcessConfig,
       updateOutputConfig,
@@ -1346,6 +1378,7 @@ export function PipelineBuilder() {
       topics,
       services,
       isRunning,
+      expandedNodeId,
       updateInputConfig,
       updateProcessConfig,
       updateOutputConfig,
@@ -1455,6 +1488,7 @@ export function PipelineBuilder() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onPaneClick={() => setExpandedNodeId(null)}
                 nodeTypes={nodeTypes}
                 fitView
                 minZoom={0.1}

@@ -34,7 +34,11 @@ export function OutputNode({ id, data }: NodeProps<WorkflowNodeData>) {
     isRunning,
     getLiveMessages,
     clearLiveMessages,
+    expandedNodeId,
+    setExpandedNode,
   } = useWorkflowCanvas();
+
+  const isExpanded = expandedNodeId === id;
   const config = data.config as OutputNodeConfig;
   const { getServiceDefinition } = useServicesStore();
   const liveMessages = getLiveMessages(id);
@@ -100,8 +104,47 @@ export function OutputNode({ id, data }: NodeProps<WorkflowNodeData>) {
     }
   }, [config.serviceType]);
 
+  const handleNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isExpanded) {
+      setExpandedNode(id);
+    }
+  };
+
+  // Collapsed view - Square shape
+  if (!isExpanded) {
+    return (
+      <div
+        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        onClick={handleNodeClick}
+        style={{ borderWidth: 0, padding: 0, background: "transparent" }}
+      >
+        <div className="w-14 h-14 rounded-none bg-green-50 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative">
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-2 h-2 bg-green-500 border-2 border-white shadow"
+          />
+          <UploadCloud className="h-6 w-6 text-green-600" />
+        </div>
+        {data.label && (
+          <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-600 truncate max-w-[80px]">
+            {data.label}
+          </div>
+        )}
+        {data.status === "active" && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+        )}
+      </div>
+    );
+  }
+
+  // Expanded view - Full form
   return (
-    <Card className="relative shadow-none pt-0 rounded-xl border border-green-200">
+    <Card
+      className="relative shadow-none pt-0 rounded-xl border border-green-200 transition-all duration-300 ease-in-out overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Handle
         type="target"
         position={Position.Left}

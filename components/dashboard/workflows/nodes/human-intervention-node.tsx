@@ -25,7 +25,11 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
     clearLiveMessages,
     approveNode,
     rejectNode,
+    expandedNodeId,
+    setExpandedNode,
   } = useWorkflowCanvas()
+  
+  const isExpanded = expandedNodeId === id
   const config = data.config as HumanInterventionNodeConfig
   const liveMessages = getLiveMessages(id)
 
@@ -33,8 +37,65 @@ export function HumanInterventionNode({ id, data }: NodeProps<WorkflowNodeData>)
   const isApproved = data.status === 'approved'
   const isRejected = data.status === 'rejected'
 
+  const handleNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isExpanded) {
+      setExpandedNode(id);
+    }
+  };
+
+  // Collapsed view - Diamond shape
+  if (!isExpanded) {
+    return (
+      <div
+        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        onClick={handleNodeClick}
+      >
+        <div 
+          className="w-14 h-14 bg-amber-50 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative"
+          style={{
+            clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+            transform: 'rotate(45deg)'
+          }}
+        >
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-2 h-2 bg-amber-500 border-2 border-white shadow"
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-2 h-2 bg-amber-500 border-2 border-white shadow"
+          />
+          <div style={{ transform: 'rotate(-45deg)' }}>
+            <UserCheck className="h-6 w-6 text-amber-600" />
+          </div>
+        </div>
+        {data.label && (
+          <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-600 truncate max-w-[80px]">
+            {data.label}
+          </div>
+        )}
+        {isPending && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></div>
+        )}
+        {isApproved && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+        )}
+        {isRejected && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>
+        )}
+      </div>
+    );
+  }
+
+  // Expanded view - Full form
   return (
-    <Card className="relative shadow-none pt-0 rounded-xl border border-amber-200">
+    <Card 
+      className="relative shadow-none pt-0 rounded-xl border border-amber-200 transition-all duration-300 ease-in-out overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Handle
         type="target"
         position={Position.Left}

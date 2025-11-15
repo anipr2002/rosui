@@ -37,7 +37,11 @@ export function ProcessNode({ id, data }: NodeProps<WorkflowNodeData>) {
     isRunning,
     getLiveMessages,
     clearLiveMessages,
+    expandedNodeId,
+    setExpandedNode,
   } = useWorkflowCanvas();
+
+  const isExpanded = expandedNodeId === id;
   const config = data.config as ProcessNodeConfig;
   const liveMessages = getLiveMessages(id);
   const beforeMessages = liveMessages.filter(
@@ -95,8 +99,57 @@ export function ProcessNode({ id, data }: NodeProps<WorkflowNodeData>) {
     ],
   };
 
+  const handleNodeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isExpanded) {
+      setExpandedNode(id);
+    }
+  };
+
+  // Collapsed view - Hexagon shape
+  if (!isExpanded) {
+    return (
+      <div
+        className="relative cursor-pointer transition-all duration-300 ease-in-out"
+        onClick={handleNodeClick}
+      >
+        <div
+          className="w-14 h-14 bg-purple-50 flex items-center justify-center shadow-sm hover:shadow-md transition-shadow relative"
+          style={{
+            clipPath:
+              "polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)",
+          }}
+        >
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="w-2 h-2 bg-purple-500 border-2 border-white shadow"
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="w-2 h-2 bg-purple-500 border-2 border-white shadow"
+          />
+          <Cog className="h-6 w-6 text-purple-600" />
+        </div>
+        {data.label && (
+          <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-600 truncate max-w-[80px]">
+            {data.label}
+          </div>
+        )}
+        {data.status === "active" && (
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+        )}
+      </div>
+    );
+  }
+
+  // Expanded view - Full form
   return (
-    <Card className="relative shadow-none pt-0 rounded-xl border border-purple-200 w-[380px]">
+    <Card
+      className="relative shadow-none pt-0 rounded-xl border border-purple-200 w-[380px] transition-all duration-300 ease-in-out overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
       <Handle
         type="target"
         position={Position.Left}
