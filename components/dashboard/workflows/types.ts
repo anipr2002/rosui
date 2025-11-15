@@ -19,6 +19,7 @@ export interface InputNodeConfig {
   executionEnabled?: boolean
   executionType?: 'publish' | 'service'
   executionTarget?: string
+  executionServiceType?: string
   executionMessage?: string
 }
 
