@@ -3,14 +3,12 @@
 import React, { useEffect } from "react";
 import { useServicesStore } from "@/store/service-store";
 import { useRosStore } from "@/store/ros-store";
-import { ServiceCard } from "@/components/dashboard/roscore/services";
-import { Spinner, SpinnerCustom } from "@/components/ui/spinner";
 import {
-  AlertCircle,
-  AlertTriangle,
-  ArrowRight,
-  ServerOff,
-} from "lucide-react";
+  ServiceCard,
+  ServiceLoading,
+} from "@/components/dashboard/roscore/services";
+import { SpinnerCustom } from "@/components/ui/spinner";
+import { AlertCircle, ArrowRight, ServerOff } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +17,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ServicesPage() {
   const { services, isLoadingServices, getServicesList, cleanup } =
@@ -78,28 +77,15 @@ export default function ServicesPage() {
 
   if (isLoadingServices) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md">
-          <div className="flex items-start gap-3">
-            <div className="flex flex-col items-center justify-center">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                <h3 className="text-sm font-semibold text-amber-900">
-                  Loading ROS Services...
-                </h3>
-              </div>
-              <p className="text-sm text-amber-700 mt-1">
-                Please wait while we load the ROS services...
-              </p>
-              <SpinnerCustom />
-              <Link href="/dashboard/settings/ros-connection">
-                <Button variant="outline" className="mt-4">
-                  Go to Settings
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <div className="w-full max-w-7xl mx-auto py-8">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <ServiceLoading key={`service-loading-${index}`} />
+          ))}
         </div>
       </div>
     );

@@ -1,0 +1,170 @@
+---
+title: ROS Bag Tools
+description: Record, convert, and visualize ROS bag files with comprehensive tools for data management and analysis
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+
+## Overview
+
+The ROS Bag Tools provide a comprehensive suite of features for working with ROS bag files. Whether you need to record live data from your ROS system, convert bag files between formats, or visualize and analyze recorded data, the ROS UI provides powerful, browser-based tools to handle all your rosbag needs.
+
+<Banner variant="tip">
+  All rosbag operations happen entirely in your browser. No data is uploaded to
+  any server, ensuring complete privacy and security for your robotics data.
+</Banner>
+
+## Features
+
+The ROS Bag Tools consist of three main components:
+
+1. **[Record](/docs/rosbag/record)**: Capture live ROS topics and save them as MCAP format rosbags
+2. **[Convert](/docs/rosbag/convert)**: Transform ROS2 `.bag` and `.db3` files to MCAP format for better compatibility
+3. **[Visualize](/docs/rosbag/visualize)**: Visualize and analyze MCAP rosbag files with interactive playback controls and multiple visualization types
+
+### Key Capabilities
+
+- **Client-side processing**: All operations run in your browser for maximum security
+- **Live recording**: Capture data from your running ROS system in real-time
+- **Format conversion**: Convert ROS2 bag files to modern MCAP format
+- **Interactive playback**: Scrub through recorded data with precise timeline controls
+- **Multiple visualizations**: Plot panels, gauge panels, indicator panels, and raw message viewers
+- **Message path parsing**: Extract nested fields from complex ROS messages
+- **Advanced filtering**: Select specific topics and configure recording limits
+
+## Quick Start
+
+### Recording Data
+
+To record live data from your ROS system:
+
+1. Navigate to `/dashboard/rosbag/record`
+2. Select topics to record
+3. Click "Start Recording"
+4. Stop when finished
+5. Download the MCAP file
+
+See the [Recording Guide](/docs/rosbag/record) for detailed instructions.
+
+### Converting Bags
+
+To convert existing ROS2 bag files to MCAP:
+
+1. Navigate to `/dashboard/rosbag/convert`
+2. Upload a `.bag` or `.db3` file
+3. Click "Convert to MCAP"
+4. Download the converted file
+
+See the [Conversion Guide](/docs/rosbag/convert) for more details.
+
+### Visualizing Data
+
+To visualize and analyze MCAP rosbag files:
+
+1. Navigate to `/dashboard/rosbag/panels`
+2. Upload an MCAP file
+3. Add visualization panels
+4. Configure and analyze your data
+
+See the [Visualization Guide](/docs/rosbag/visualize) for comprehensive information.
+
+## Supported Formats
+
+**Input Formats:**
+
+- ROS2 `.bag` files (SQLite3 format)
+- ROS2 `.db3` files (SQLite3 database)
+
+**Output Format:**
+
+- `.mcap` (MCAP format) - Modern, browser-optimized format
+
+## Technical Details
+
+### File Formats
+
+**ROS2 Bag Format (`.bag`, `.db3`):**
+
+- SQLite3 database format
+- Stores messages in binary format
+- Includes metadata and message definitions
+- Efficient for storage but requires conversion for web use
+
+**MCAP Format (`.mcap`):**
+
+- Self-contained container format
+- Includes schemas, channels, and messages
+- Optimized for random access
+- Browser-friendly with efficient parsing
+
+### Architecture
+
+**Recording System:**
+
+- Subscribes to ROS topics via rosbridge
+- Writes messages to MCAP format in memory
+- Accumulates data until recording stops
+- Finalizes file structure on stop
+
+**Conversion System:**
+
+- Uses SQL.js for SQLite database access
+- Rosbag2 library for bag parsing
+- MCAP writer for output generation
+- Processes messages sequentially
+
+**Visualization System:**
+
+- MCAP reader for file parsing
+- Indexed message access for performance
+- Panel system with type-safe configuration
+- Real-time updates during playback
+
+### Performance Considerations
+
+**Memory Usage:**
+
+- Recording: Scales with recording duration and message rate
+- Conversion: Requires memory proportional to file size
+- Visualization: Loads entire file into memory for indexed access
+
+**Browser Limitations:**
+
+- Large files may cause memory issues
+- Very long recordings may impact performance
+- Multiple panels can increase rendering load
+
+**Optimization Tips:**
+
+- Limit recorded topics to necessary data
+- Split large bags into smaller files
+- Remove unused panels during visualization
+- Use message path filtering when possible
+
+## Common Use Cases
+
+### Debugging Robot Systems
+
+Record sensor data, control commands, and system state to analyze robot behavior and identify issues.
+
+### Performance Analysis
+
+Visualize system metrics, sensor readings, and performance data over time to optimize robot performance.
+
+### Data Archiving
+
+Convert and archive test sessions and demonstrations for future reference and analysis.
+
+### Testing and Validation
+
+Record test scenarios and verify system behavior against expected results.
+
+## Next Steps
+
+- Learn how to [Record ROS Bags](/docs/rosbag/record)
+- Understand [Bag Conversion](/docs/rosbag/convert)
+- Explore [Visualization Features](/docs/rosbag/visualize)
+
+---
+
+The ROS Bag Tools provide a complete workflow for recording, converting, and visualizing ROS data, all within your browser. Whether you're debugging a robot system, analyzing sensor data, or archiving test sessions, these tools offer the flexibility and power you need for comprehensive rosbag management.

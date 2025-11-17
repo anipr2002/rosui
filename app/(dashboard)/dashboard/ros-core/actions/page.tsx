@@ -3,12 +3,16 @@
 import React, { useEffect } from "react";
 import { useRosStore } from "@/store/ros-store";
 import { useActionsStore } from "@/store/action-store";
-import { ActionCard } from "@/components/dashboard/roscore/actions";
-import { AlertCircle, ArrowRight, Loader2, Activity } from "lucide-react";
+import {
+  ActionCard,
+  ActionLoading,
+} from "@/components/dashboard/roscore/actions";
+import { AlertCircle, ArrowRight, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { SpinnerCustom } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function ActionsPage() {
   const { ros, status } = useRosStore();
@@ -77,16 +81,14 @@ function ActionsPage() {
   if (isLoadingActions) {
     return (
       <div className="w-full max-w-7xl mx-auto py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Actions</h1>
-          <p className="text-muted-foreground mt-2">
-            View and manage your ROS action servers
-          </p>
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-80" />
         </div>
-
-        <div className="flex flex-col items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400 mb-4" />
-          <p className="text-sm text-gray-500">Loading action servers...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <ActionLoading key={`action-loading-${index}`} />
+          ))}
         </div>
       </div>
     );

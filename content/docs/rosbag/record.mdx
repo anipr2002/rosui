@@ -1,0 +1,201 @@
+---
+title: Recording ROS Bags
+description: Capture live ROS topics and save them as MCAP format rosbags
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+
+## Overview
+
+The Record feature allows you to capture live data from your ROS system and save it as an MCAP format rosbag file. All recording happens in real-time through your ROS connection, and the data is stored entirely in your browser until you download it.
+
+<Banner variant="tip">
+  Recording requires an active ROS connection via rosbridge. Ensure your ROS system is running and connected before starting a recording session.
+</Banner>
+
+## Prerequisites
+
+Before recording, ensure:
+
+- ROS connection is established (rosbridge server running)
+- At least one topic is available in your ROS system
+- Topics of interest are identified for recording
+
+## Getting Started
+
+1. Navigate to `/dashboard/rosbag/record`
+2. Select topics to record using the Topic Selector panel
+3. Configure recording options (optional)
+4. Click "Start Recording" to begin capturing data
+5. Monitor recording status in real-time
+6. Stop recording when finished
+7. Download the recorded MCAP file
+
+## Topic Selection
+
+The Topic Selector panel provides comprehensive topic management:
+
+**Selection Options:**
+
+- **Record All Topics**: Toggle to automatically record all available topics, including new ones that appear during recording
+- **Individual Selection**: Manually select specific topics from the list
+- **Search Functionality**: Filter topics by name or type for easier selection
+- **Bulk Actions**: Select all or clear all topics with one click
+
+**Selection Interface:**
+
+- Checkboxes indicate selected topics
+- Topic name and message type displayed for each entry
+- Real-time count shows selected vs. total topics
+- Search bar filters topics dynamically
+
+```tsx
+// Topic selection example
+<Switch checked={recordAllTopics} onCheckedChange={setRecordAllTopics} />
+```
+
+## Recording Controls
+
+The Recording Controls panel manages the recording session:
+
+**Main Controls:**
+
+- **Start Recording**: Begin capturing data from selected topics (requires ROS connection and at least one selected topic)
+- **Stop Recording**: End the recording session and finalize the bag file
+- **Recording Status**: Visual indicator shows current recording state
+
+**Status Indicators:**
+
+- **Ready**: No active recording, ready to start
+- **Recording**: Actively capturing data (red pulsing indicator)
+- **Stopping**: Recording is being finalized
+
+## Recording Statistics
+
+Real-time statistics are displayed during and after recording:
+
+**Metrics Tracked:**
+
+- **Duration**: Total recording time (updates live during recording)
+- **Message Count**: Total number of messages captured
+- **Message Rate**: Average messages per second
+- **Topic Count**: Number of topics being recorded
+- **File Size**: Final MCAP file size (after recording completes)
+
+The Recording Status panel shows:
+
+- Live elapsed time with millisecond precision
+- Per-topic message counts
+- Overall message rate calculations
+- Visual indicators for active recording
+
+## Advanced Options
+
+Configure recording limits to prevent excessive file sizes:
+
+**Maximum Duration:**
+
+- Set automatic stop after specified time (in seconds)
+- Prevents accidentally recording indefinitely
+- Useful for automated testing scenarios
+
+**Maximum Size:**
+
+- Set automatic stop when file reaches specified size (in MB)
+- Prevents running out of disk space
+- Ensures files remain manageable
+
+**Usage:**
+
+1. Click "Advanced Options" to expand settings
+2. Enter maximum duration (seconds) or maximum size (MB)
+3. Leave empty for unlimited recording
+4. Settings apply to next recording session
+
+## Downloading Recordings
+
+After recording completes, download the MCAP file:
+
+1. **Optional Filename**: Enter a custom filename or use auto-generated name
+2. **Auto-extension**: `.mcap` extension is automatically added if missing
+3. **Download Button**: Click "Download MCAP" to save the file
+4. **Clear Recording**: Remove recorded data without downloading
+
+**Filename Format:**
+
+- If no filename provided: Auto-generated with timestamp
+- Custom filenames: Your input with `.mcap` extension appended
+- Examples: `my_recording.mcap`, `test_run_001.mcap`
+
+## Best Practices
+
+### Topic Selection
+
+- Only record topics you need to reduce file size
+- Use "Record All Topics" for comprehensive system snapshots
+- Consider message frequency when selecting high-rate topics
+
+### Resource Management
+
+- Set maximum duration for long recordings
+- Use maximum size limits for automated systems
+- Monitor file size during recording for very long sessions
+
+### Data Quality
+
+- Ensure ROS connection is stable before starting
+- Verify topics are publishing data before recording
+- Stop recording cleanly to ensure file integrity
+
+## Usage Example
+
+### Recording a Test Session
+
+**Scenario:** Record 30 seconds of sensor data for analysis.
+
+1. Navigate to Record page
+2. Search for sensor topics (e.g., `/imu/data`, `/camera/image`)
+3. Select desired topics
+4. Expand Advanced Options
+5. Set Max Duration to 30 seconds
+6. Click "Start Recording"
+7. Monitor recording progress
+8. Recording stops automatically after 30 seconds
+9. Download the MCAP file as `sensor_test_30s.mcap`
+
+## Troubleshooting
+
+### Recording Issues
+
+**Problem: "ROS Not Connected"**
+
+- **Solution**: Ensure rosbridge server is running and connected
+- Verify connection status in ROS connection indicator
+- Check WebSocket connection in browser developer tools
+
+**Problem: "No Topics Selected"**
+
+- **Solution**: Select at least one topic before starting
+- Use "Record All Topics" toggle if needed
+- Verify topics are available in ROS system
+
+**Problem: Recording stops unexpectedly**
+
+- **Solution**: Check if maximum duration or size limit was reached
+- Verify ROS connection stability
+- Check browser console for errors
+
+**Problem: File size too large**
+
+- **Solution**: Use topic filtering to record fewer topics
+- Set maximum size limit in advanced options
+- Record shorter durations
+
+## Related Documentation
+
+- [Converting ROS Bags](/docs/rosbag/convert)
+- [Visualizing ROS Bags](/docs/rosbag/visualize)
+- [ROS Bag Tools Overview](/docs/rosbag)
+
+
+

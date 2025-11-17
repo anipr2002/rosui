@@ -1,0 +1,450 @@
+---
+title: Visualizing ROS Bags
+description: Visualize and analyze MCAP rosbag files with interactive playback controls and multiple visualization types
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+
+## Overview
+
+The Panels feature provides comprehensive visualization and analysis tools for MCAP format rosbag files. Create multiple visualization panels, control playback precisely, and analyze your data interactively.
+
+<Banner variant="tip">
+  Visualization requires MCAP format files. Use the Record or Convert features to create MCAP files from your ROS data.
+</Banner>
+
+## Prerequisites
+
+Before visualizing:
+
+- MCAP format rosbag file (can be created via Record or Convert features)
+- File uploaded and parsed successfully
+- Topics identified for visualization
+
+## Getting Started
+
+1. Navigate to `/dashboard/rosbag/panels`
+2. Upload an MCAP file via drag-and-drop or file browser
+3. Add visualization panels for topics of interest
+4. Configure panels to display desired data
+5. Use playback controls to navigate through time
+6. Analyze data with interactive visualizations
+
+## File Upload and Parsing
+
+**Upload Methods:**
+
+- Drag and drop MCAP file onto upload area
+- Click to browse and select file
+- File validation ensures MCAP format
+
+**Parsing Process:**
+
+- File is read and parsed using MCAP libraries
+- Topics, schemas, and messages are indexed
+- Metadata extracted (start time, end time, duration)
+- Ready for visualization after parsing completes
+
+**File Information:**
+
+- Total duration displayed
+- Topic count shown
+- Message count calculated
+- File size displayed
+
+## Playback Controls
+
+The Playback Controls panel provides precise timeline navigation:
+
+**Timeline Slider:**
+
+- Drag to scrub through entire recording
+- Visual progress indicator
+- Precise time positioning
+
+**Playback Buttons:**
+
+- **Reset**: Jump to start of recording
+- **Skip Back (-5s)**: Move backward 5 seconds
+- **Play/Pause**: Toggle playback
+- **Skip Forward (+5s)**: Move forward 5 seconds
+- **End**: Jump to end of recording
+
+**Playback Speed:**
+
+- Selectable speeds: 0.25x, 0.5x, 1x, 2x, 4x, 8x
+- Adjustable during playback
+- Visual indicator shows current speed
+
+**Time Display:**
+
+- Current time shown relative to start
+- Total duration displayed
+- Progress percentage calculated
+- Time in seconds format
+
+**Playback Features:**
+
+- Smooth scrubbing through timeline
+- Automatic panel updates during playback
+- Progressive data reveal (data appears up to current time)
+- Precise time control for analysis
+
+## Panel Types
+
+The visualization system supports multiple panel types for different analysis needs:
+
+### Plot Panel
+
+Time-series visualization for numeric data:
+
+**Features:**
+
+- Line charts with multiple series
+- Progressive reveal during playback
+- Interactive legend for series control
+- Customizable colors per series
+- Time-based X-axis
+- Auto-scaling Y-axis
+
+**Configuration:**
+
+- Add multiple series to single plot
+- Select topic for each series
+- Specify message path (e.g., `.data`, `.pose.position.x`)
+- Custom labels for each series
+- Enable/disable individual series
+
+**Use Cases:**
+
+- Sensor data trends over time
+- Multiple signals on same plot for comparison
+- Velocity, position, or control signal analysis
+- Performance metrics visualization
+
+**Example Message Paths:**
+
+```
+Topic: /sensor/temperature
+Type: std_msgs/Float64
+Path: .data
+
+Topic: /robot/pose
+Type: geometry_msgs/PoseStamped
+Path: .pose.position.x
+
+Topic: /cmd_vel
+Type: geometry_msgs/Twist
+Path: .linear.x
+```
+
+### Gauge Panel
+
+Circular gauge visualization for single numeric values:
+
+**Features:**
+
+- Analog gauge display with needle
+- Configurable min/max ranges
+- Color-coded zones (optional)
+- Real-time value updates
+- Customizable appearance
+
+**Configuration:**
+
+- Select topic and message path
+- Set minimum and maximum values
+- Configure color zones (warning, critical, etc.)
+- Custom label for display
+
+**Use Cases:**
+
+- Battery level monitoring
+- Temperature or pressure display
+- System resource usage
+- Single metric at-a-glance
+
+**Example:**
+
+```
+Topic: /battery/level
+Type: std_msgs/Float64
+Path: .data
+Min: 0
+Max: 100
+```
+
+### Indicator Panel
+
+Color-coded indicators based on data-driven rules:
+
+**Features:**
+
+- Multiple rules with conditions
+- Color-coded visual feedback
+- Two display styles: Bulb and Background
+- Custom labels per rule
+- Real-time rule evaluation
+
+**Configuration:**
+
+- Select topic and message path
+- Define rules with comparison operators
+- Set colors and labels for each rule
+- Choose display style
+
+**Comparison Operators:**
+
+- Equal (`==`)
+- Less than (`<`)
+- Less than or equal (`<=`)
+- Greater than (`>`)
+- Greater than or equal (`>=`)
+
+**Rule Examples:**
+
+```
+Value < 50: Red, "Low"
+Value >= 50 && Value < 80: Yellow, "Normal"
+Value >= 80: Green, "High"
+```
+
+**Use Cases:**
+
+- Status monitoring (OK/Warning/Critical)
+- Threshold-based alerts
+- State visualization
+- Safety indicator display
+
+**Display Styles:**
+
+- **Bulb**: Large circular indicator with glow effect
+- **Background**: Full panel background color change
+
+### Raw Topic Viewer
+
+Display raw message content in JSON format:
+
+**Features:**
+
+- Pretty-printed JSON display
+- Message history viewer
+- Real-time message updates
+- Filter by message path (optional)
+- Expandable/collapsible sections
+
+**Configuration:**
+
+- Select topic to view
+- Optional message path filter
+- Number of messages to display
+- Auto-scroll options
+
+**Use Cases:**
+
+- Debugging message structure
+- Inspecting complex nested messages
+- Verifying message content
+- Understanding message format
+
+## Message Path Syntax
+
+Message paths allow extraction of nested data from ROS messages:
+
+**Basic Syntax:**
+
+- `.field` - Access top-level field
+- `.field.subfield` - Access nested field
+- `.array[0]` - Access array element by index
+- `.array[:].field` - Extract field from all array elements
+
+**Examples:**
+
+```javascript
+// Simple numeric value
+Topic: /temperature
+Type: std_msgs/Float64
+Path: .data
+Result: 25.3
+
+// Nested structure
+Topic: /robot/pose
+Type: geometry_msgs/PoseStamped
+Path: .pose.position.x
+Result: 1.234
+
+// Array element
+Topic: /joint_states
+Type: sensor_msgs/JointState
+Path: .position[0]
+Result: 0.523
+
+// Array field extraction (returns array)
+Topic: /laser_scan
+Type: sensor_msgs/LaserScan
+Path: .ranges[:]
+Result: [1.2, 1.3, 1.4, ...]
+```
+
+**Path Parsing:**
+
+- Supports dot notation for nested access
+- Array indexing with square brackets
+- Automatic type conversion for numeric values
+- Error handling for invalid paths
+
+## Managing Panels
+
+**Adding Panels:**
+
+1. Click "Add Panel" button
+2. Select panel type from dropdown
+3. Panel appears in layout
+4. Configure in Settings tab
+
+**Removing Panels:**
+
+- Click trash icon in panel header
+- Panel is immediately removed
+- Configuration is discarded
+
+**Panel Layout:**
+
+- Panels stack vertically by default
+- Each panel is independently configurable
+- Multiple panels can visualize same topic
+- Panel order determines display sequence
+
+## Advanced Features
+
+**Progressive Data Reveal:**
+
+- Data appears up to current playback time
+- Simulates real-time data collection
+- Useful for understanding temporal relationships
+- All panels respect current time position
+
+**Multi-Series Plots:**
+
+- Combine multiple topics in single plot
+- Compare different signals over time
+- Synchronized time axis
+- Individual series enable/disable
+
+**Time Synchronization:**
+
+- All panels update simultaneously
+- Current time position shared across panels
+- Playback controls affect all visualizations
+- Precise time alignment between panels
+
+## Usage Examples
+
+### Analyzing Robot Trajectory
+
+**Scenario:** Visualize robot position and velocity over time.
+
+1. Navigate to Panels page
+2. Upload MCAP file containing pose and velocity topics
+3. Add Plot Panel
+4. In Settings tab, click "Add Series"
+5. Configure first series:
+   - Topic: `/robot/pose`
+   - Path: `.pose.pose.position.x`
+   - Label: "X Position"
+6. Add second series:
+   - Topic: `/robot/pose`
+   - Path: `.pose.pose.position.y`
+   - Label: "Y Position"
+7. Add third series:
+   - Topic: `/cmd_vel`
+   - Path: `.linear.x`
+   - Label: "X Velocity"
+8. Switch to Chart tab
+9. Use playback controls to scrub through trajectory
+10. Observe position and velocity relationships
+
+### Monitoring System Health
+
+**Scenario:** Create dashboard with multiple indicators.
+
+1. Upload MCAP file with system status topics
+2. Add Gauge Panel for battery level:
+   - Topic: `/battery/level`
+   - Path: `.data`
+   - Min: 0, Max: 100
+3. Add Indicator Panel for temperature:
+   - Topic: `/temperature`
+   - Path: `.data`
+   - Rules:
+     - &lt; 50°C: Green, "Normal"
+     - &gt;= 50°C && &lt; 70°C: Yellow, "Warning"
+     - &gt;= 70°C: Red, "Critical"
+4. Add Plot Panel for CPU usage:
+   - Topic: `/system/cpu`
+   - Path: `.usage`
+5. Use playback to see system behavior over time
+
+## Best Practices
+
+### Panel Organization
+
+- Group related panels together
+- Use descriptive labels for series
+- Limit number of series per plot for clarity
+- Remove unused panels to improve performance
+
+### Message Paths
+
+- Test message paths in Raw Viewer first
+- Use simple paths when possible
+- Verify path syntax before configuring
+- Check topic type definitions for structure
+
+### Playback
+
+- Use slow speeds (0.25x, 0.5x) for detailed analysis
+- Use faster speeds (2x, 4x) for overview
+- Scrub to specific time points for inspection
+- Reset to start when needed
+
+## Troubleshooting
+
+### Visualization Issues
+
+**Problem: Panels not updating during playback**
+
+- **Solution**: Verify MCAP file was parsed successfully
+- Check that topics exist in the bag file
+- Ensure message paths are correct
+- Refresh page and re-upload file
+
+**Problem: Message path returns null**
+
+- **Solution**: Verify path syntax matches message structure
+- Check topic type in Raw Topic Viewer
+- Test path incrementally (start with simple path)
+- Ensure message contains the field at current time
+
+**Problem: Plot shows no data**
+
+- **Solution**: Verify series are enabled
+- Check message path extracts numeric values
+- Ensure topic has messages in time range
+- Verify current time position includes data
+
+**Problem: Playback controls not responsive**
+
+- **Solution**: Check that file parsing completed
+- Verify metadata was loaded correctly
+- Refresh page and re-upload file
+- Check browser console for errors
+
+## Related Documentation
+
+- [Recording ROS Bags](/docs/rosbag/record)
+- [Converting ROS Bags](/docs/rosbag/convert)
+- [ROS Bag Tools Overview](/docs/rosbag)
+
+
+

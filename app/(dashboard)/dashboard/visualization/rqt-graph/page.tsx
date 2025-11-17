@@ -2,15 +2,21 @@
 
 import React from "react";
 import { useRosStore } from "@/store/ros-store";
-import { RQTGraph } from "@/components/dashboard/visulatization/rqt-graph";
+import { useRQTGraphStore } from "@/store/rqt-graph-store";
+import {
+  RQTGraph,
+  RQTGraphLoading,
+} from "@/components/dashboard/visulatization/rqt-graph";
 import { ReactFlowProvider } from "reactflow";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import { SpinnerCustom } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function RQTGraphPage() {
   const { status } = useRosStore();
+  const { isLoading } = useRQTGraphStore();
 
   // Not connected state
   if (status !== "connected") {
@@ -48,6 +54,19 @@ function RQTGraphPage() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-7xl mx-auto py-8">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <RQTGraphLoading />
       </div>
     );
   }

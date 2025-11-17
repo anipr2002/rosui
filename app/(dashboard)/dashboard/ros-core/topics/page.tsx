@@ -3,12 +3,13 @@
 import React, { useEffect } from "react";
 import { useRosStore } from "@/store/ros-store";
 import { useTopicsStore } from "@/store/topic-store";
-import { TopicCard } from "@/components/dashboard/roscore/topics";
-import { AlertCircle, ArrowRight, Loader2, Radio } from "lucide-react";
+import { TopicCard, TopicLoading } from "@/components/dashboard/roscore/topics";
+import { AlertCircle, ArrowRight, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { SpinnerCustom } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function TopicsPage() {
   const { ros, status } = useRosStore();
@@ -75,28 +76,15 @@ function TopicsPage() {
   // Loading state
   if (isLoadingTopics) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md">
-          <div className="flex items-start gap-3">
-            <div className="flex flex-col items-center justify-center">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                <h3 className="text-sm font-semibold text-amber-900">
-                  Loading ROS Topics...
-                </h3>
-              </div>
-              <p className="text-sm text-amber-700 mt-1">
-                Please wait while we load the ROS topics...
-              </p>
-              <SpinnerCustom />
-              <Link href="/dashboard/settings/ros-connection">
-                <Button variant="outline" className="mt-4">
-                  Go to Settings
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+      <div className="w-full max-w-7xl mx-auto py-8">
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <TopicLoading key={`topic-loading-${index}`} />
+          ))}
         </div>
       </div>
     );

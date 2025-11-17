@@ -1,0 +1,210 @@
+---
+title: Converting ROS Bags
+description: Transform ROS2 bag files to MCAP format for better compatibility
+---
+
+import { Banner } from "fumadocs-ui/components/banner";
+
+## Overview
+
+The Convert feature transforms ROS2 bag files (`.bag` and `.db3`) into MCAP format for better compatibility with visualization tools and modern ROS workflows. The conversion process runs entirely in your browser, ensuring your data never leaves your machine.
+
+<Banner variant="tip">
+  Conversion happens entirely client-side. No data is uploaded to any server, ensuring complete privacy and security for your robotics data.
+</Banner>
+
+## Why Convert to MCAP?
+
+MCAP (Modular Container and Protocol) offers several advantages:
+
+- **Better browser support**: Optimized for web-based visualization
+- **Efficient indexing**: Faster random access to messages
+- **Self-contained**: All metadata and schemas included
+- **Future-proof**: Modern format with active development
+
+## Supported Formats
+
+**Input Formats:**
+
+- `.bag` - ROS2 SQLite3 bag files
+- `.db3` - ROS2 SQLite3 database files
+
+**Output Format:**
+
+- `.mcap` - MCAP format rosbag files
+
+## Getting Started
+
+1. Navigate to `/dashboard/rosbag/convert`
+2. Upload a `.bag` or `.db3` file via drag-and-drop or file browser
+3. Click "Convert to MCAP" to start conversion
+4. Monitor progress in real-time
+5. Download the converted MCAP file when complete
+
+## File Upload
+
+The File Uploader component supports multiple input methods:
+
+**Drag and Drop:**
+
+- Drag a bag file onto the upload area
+- Visual feedback shows drag state
+- Drop to select the file
+
+**File Browser:**
+
+- Click the upload area to open file picker
+- Browse to your bag file location
+- Select the file to load
+
+**File Validation:**
+
+- Only `.bag` and `.db3` files are accepted
+- File size validation warns for large files (&gt;100MB)
+- Clear error messages for invalid files
+
+**File Information Display:**
+
+- File name displayed after selection
+- File size shown in human-readable format (KB, MB, GB)
+- Option to remove selected file before conversion
+
+## Conversion Process
+
+The conversion process runs entirely in your browser:
+
+**Conversion Steps:**
+
+1. **File Reading**: Load file data into memory as ArrayBuffer
+2. **SQL.js Initialization**: Initialize SQLite WASM engine for database access
+3. **Bag Parsing**: Parse bag structure using Rosbag2 library
+4. **MCAP Initialization**: Create MCAP writer with ROS2 profile
+5. **Schema Registration**: Extract and register message schemas for each topic
+6. **Channel Creation**: Create MCAP channels mapped to ROS topics
+7. **Message Conversion**: Iterate through all messages and write to MCAP format
+8. **File Finalization**: Complete MCAP file with metadata and indexes
+
+**Progress Updates:**
+
+- Real-time status messages during conversion
+- Progress indicator shows current operation
+- Message count updates during message conversion
+
+## Conversion Results
+
+After conversion completes, detailed statistics are displayed:
+
+**Conversion Statistics:**
+
+- **Input File Size**: Original bag file size
+- **Output File Size**: Generated MCAP file size
+- **Compression Ratio**: Size difference between formats
+- **Topic Count**: Number of unique topics in the bag
+- **Message Count**: Total messages converted
+- **Duration**: Time range of messages in the bag
+
+**Download Options:**
+
+- One-click download of converted MCAP file
+- Preserved filename with `.mcap` extension
+- Clear button to reset for next conversion
+
+## Performance Considerations
+
+**File Size Impact:**
+
+- Small files (&lt;100MB): Conversion typically takes seconds
+- Medium files (100MB-500MB): May take 1-3 minutes
+- Large files (&gt;500MB): Can take several minutes
+
+**Memory Usage:**
+
+- Conversion requires memory proportional to file size
+- Very large files (&gt;2GB) may cause browser memory issues
+- Browser may warn about memory-intensive operations
+
+**Best Practices:**
+
+- Convert smaller files for faster results
+- Close other browser tabs during large conversions
+- Consider splitting very large bags before conversion
+
+## Error Handling
+
+The converter provides comprehensive error handling:
+
+**Common Errors:**
+
+- **Invalid File Format**: File is not a valid ROS2 bag
+- **Corrupted Bag**: Bag file is damaged or incomplete
+- **Memory Limit**: File too large for browser memory
+- **Missing WASM**: SQL.js WASM file not found
+
+**Error Messages:**
+
+- Clear, user-friendly error descriptions
+- Actionable suggestions for resolution
+- Toast notifications for immediate feedback
+
+## Usage Example
+
+### Converting Legacy Bag Files
+
+**Scenario:** Convert old ROS2 bag file for visualization.
+
+1. Navigate to Convert page
+2. Drag and drop `old_recording.bag` file
+3. File information displays (size, format)
+4. Click "Convert to MCAP"
+5. Monitor conversion progress
+6. Wait for completion (time depends on file size)
+7. Review conversion statistics
+8. Download converted file as `old_recording.mcap`
+
+## Best Practices
+
+### File Preparation
+
+- Verify bag file is not corrupted before conversion
+- Check file size to estimate conversion time
+- Close other browser tabs for large files
+- Ensure stable browser connection
+
+### Performance
+
+- Convert during low system usage periods
+- Split very large bags if conversion fails
+- Use smaller files for faster results
+- Monitor browser memory usage
+
+## Troubleshooting
+
+### Conversion Issues
+
+**Problem: "Invalid file format"**
+
+- **Solution**: Ensure file is a valid ROS2 `.bag` or `.db3` file
+- Verify file is not corrupted
+- Check file extension matches format
+
+**Problem: Conversion hangs or fails**
+
+- **Solution**: File may be too large for browser memory
+- Try closing other browser tabs
+- Split bag file into smaller parts
+- Check browser console for error messages
+
+**Problem: WASM file not found**
+
+- **Solution**: Ensure SQL.js WASM file is in `/public/wasm/` directory
+- Check network tab for failed resource loads
+- Verify public folder structure
+
+## Related Documentation
+
+- [Recording ROS Bags](/docs/rosbag/record)
+- [Visualizing ROS Bags](/docs/rosbag/visualize)
+- [ROS Bag Tools Overview](/docs/rosbag)
+
+
+
