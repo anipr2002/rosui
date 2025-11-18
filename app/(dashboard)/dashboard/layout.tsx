@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Command, Search } from "lucide-react";
-import { RosConnectionStatus } from "@/components/dashboard/ros-connection-status";
+import { RosConnectionStatus } from "@/components/dashboard/misc/ros-connection-status";
+import { RefreshButton } from "@/components/dashboard/misc/refresh-button";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
@@ -84,6 +85,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <div className="flex items-center gap-2 px-4">
               <RosConnectionStatus />
+              <RefreshButton />
               <Button
                 variant="outline"
                 size="sm"

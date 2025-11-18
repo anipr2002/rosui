@@ -17,7 +17,7 @@ export function RosConnectionStatus() {
       href="/dashboard/settings/ros-connection"
       className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-        "border hover:shadow-sm",
+        "border",
         isConnected &&
           "text-green-700 bg-green-50 border-green-200 hover:bg-green-100",
         isDisconnected &&
