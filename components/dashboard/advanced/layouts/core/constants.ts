@@ -34,10 +34,10 @@ export const LAYOUTS: Record<LayoutType, LayoutConfig> = {
 export const PANEL_TYPES = [
   "Plot Panel",
   "Image Panel",
+  "Raw Topic Viewer",
   // Future panel types to implement:
   // "Gauge Panel",
   // "Indicator Panel",
-  // "Raw Messages Panel",
   // "Map Panel",
   // "Table Panel",
   // "Audio Panel",
@@ -59,3 +59,6 @@ export const PANEL_COLORS = [
   "bg-pink-50",
   "bg-teal-50",
 ];
+
+export const ROW_HEIGHT = 20;
+export const MIN_ROWSPAN = 12; // 12 * 20px = 240px minimum height

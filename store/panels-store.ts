@@ -69,8 +69,19 @@ export interface RawTopicViewerPanelConfig {
   showTimestamp: boolean
 }
 
+export interface DiagnosticsPanelConfig {
+  id: string
+  type: 'diagnostics'
+  topic: string
+  minLevel: 0 | 1 | 2 | 3 // 0=OK, 1=WARN, 2=ERROR, 3=STALE
+  searchFilter: string
+  sortBy: 'name' | 'level' | 'time'
+  showPinned: boolean
+  pinnedDiagnostics: string[]
+}
+
 // Union type for all panel types (extensible for future panel types)
-export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig | RawTopicViewerPanelConfig
+export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig | RawTopicViewerPanelConfig | DiagnosticsPanelConfig
 
 interface PanelsState {
   // File state
@@ -93,6 +104,7 @@ interface PanelsState {
   gaugePanels: GaugePanelConfig[]
   indicatorPanels: IndicatorPanelConfig[]
   rawTopicViewerPanels: RawTopicViewerPanelConfig[]
+  diagnosticsPanels: DiagnosticsPanelConfig[]
   
   // Actions
   loadFile: (file: File) => Promise<void>
@@ -131,6 +143,11 @@ interface PanelsState {
   addRawTopicViewerPanel: () => void
   updateRawTopicViewerPanel: (panelId: string, config: Partial<RawTopicViewerPanelConfig>) => void
   
+  // Diagnostics panel specific
+  addDiagnosticsPanel: () => void
+  updateDiagnosticsPanel: (panelId: string, config: Partial<DiagnosticsPanelConfig>) => void
+  togglePinnedDiagnostic: (panelId: string, diagnosticName: string) => void
+  
   // Data access
   getMessagesForTopic: (topic: string, startTime?: bigint, endTime?: bigint) => McapMessage[]
   getDeserializedMessage: (message: McapMessage) => any
@@ -155,6 +172,7 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   gaugePanels: [],
   indicatorPanels: [],
   rawTopicViewerPanels: [],
+  diagnosticsPanels: [],
   
   // Load MCAP file
   loadFile: async (file: File) => {
@@ -280,7 +298,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       plotPanels: state.plotPanels.filter(p => p.id !== panelId),
       gaugePanels: state.gaugePanels.filter(p => p.id !== panelId),
       indicatorPanels: state.indicatorPanels.filter(p => p.id !== panelId),
-      rawTopicViewerPanels: state.rawTopicViewerPanels.filter(p => p.id !== panelId)
+      rawTopicViewerPanels: state.rawTopicViewerPanels.filter(p => p.id !== panelId),
+      diagnosticsPanels: state.diagnosticsPanels.filter(p => p.id !== panelId)
     }))
   },
   
@@ -554,6 +573,65 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         p.id === panelId ? { ...p, ...config } as RawTopicViewerPanelConfig : p
       )
     }))
+  },
+  
+  // Diagnostics panel specific
+  addDiagnosticsPanel: () => {
+    const defaultTopic = get().metadata?.topics.find(t => 
+      t.name.includes('diagnostics')
+    )?.name || get().metadata?.topics[0]?.name || '/diagnostics'
+    
+    const newPanel: DiagnosticsPanelConfig = {
+      id: `panel-${Date.now()}-${Math.random()}`,
+      type: 'diagnostics',
+      topic: defaultTopic,
+      minLevel: 0,
+      searchFilter: '',
+      sortBy: 'level',
+      showPinned: true,
+      pinnedDiagnostics: []
+    }
+    
+    set((state) => ({
+      panels: [...state.panels, newPanel],
+      diagnosticsPanels: [...state.diagnosticsPanels, newPanel]
+    }))
+  },
+  
+  updateDiagnosticsPanel: (panelId: string, config: Partial<DiagnosticsPanelConfig>) => {
+    set((state) => ({
+      panels: state.panels.map(p =>
+        p.id === panelId && p.type === 'diagnostics' ? { ...p, ...config } as DiagnosticsPanelConfig : p
+      ),
+      diagnosticsPanels: state.diagnosticsPanels.map(p =>
+        p.id === panelId ? { ...p, ...config } as DiagnosticsPanelConfig : p
+      )
+    }))
+  },
+  
+  togglePinnedDiagnostic: (panelId: string, diagnosticName: string) => {
+    set((state) => {
+      const panel = state.diagnosticsPanels.find(p => p.id === panelId)
+      if (!panel) return state
+      
+      const isPinned = panel.pinnedDiagnostics.includes(diagnosticName)
+      const newPinnedDiagnostics = isPinned
+        ? panel.pinnedDiagnostics.filter(name => name !== diagnosticName)
+        : [...panel.pinnedDiagnostics, diagnosticName]
+      
+      return {
+        panels: state.panels.map(p =>
+          p.id === panelId && p.type === 'diagnostics'
+            ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
+            : p
+        ),
+        diagnosticsPanels: state.diagnosticsPanels.map(p =>
+          p.id === panelId
+            ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
+            : p
+        )
+      }
+    })
   },
   
   // Data access
