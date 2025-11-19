@@ -36,7 +36,29 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SpinnerCustom } from "@/components/ui/spinner";
 
-export function RQTGraph() {
+export interface RQTGraphProps {
+  searchQuery?: string;
+  filterSystemNodes?: boolean;
+  showTopics?: boolean;
+  layoutDirection?: LayoutDirection;
+  hideControls?: boolean;
+  onSearchChange?: (query: string) => void;
+  onFilterSystemNodesChange?: (checked: boolean) => void;
+  onShowTopicsChange?: (checked: boolean) => void;
+  onLayoutDirectionChange?: (direction: LayoutDirection) => void;
+}
+
+export function RQTGraph({
+  searchQuery: propSearchQuery,
+  filterSystemNodes: propFilterSystemNodes,
+  showTopics: propShowTopics,
+  layoutDirection: propLayoutDirection,
+  hideControls = false,
+  onSearchChange,
+  onFilterSystemNodesChange,
+  onShowTopicsChange,
+  onLayoutDirectionChange,
+}: RQTGraphProps = {}) {
   const nodeTypes = useMemo(
     () => ({
       rosNode: GraphNode,
@@ -59,10 +81,40 @@ export function RQTGraph() {
   const [selectedElement, setSelectedElement] = useState<RQTNodeData | null>(
     null
   );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterSystemNodes, setFilterSystemNodes] = useState(true);
-  const [showTopics, setShowTopics] = useState(true);
-  const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>("LR");
+  
+  // Internal state (used if props are not provided)
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const [internalFilterSystemNodes, setInternalFilterSystemNodes] = useState(true);
+  const [internalShowTopics, setInternalShowTopics] = useState(true);
+  const [internalLayoutDirection, setInternalLayoutDirection] = useState<LayoutDirection>("LR");
+
+  // Derived state (prefer props, fallback to internal)
+  const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const filterSystemNodes = propFilterSystemNodes !== undefined ? propFilterSystemNodes : internalFilterSystemNodes;
+  const showTopics = propShowTopics !== undefined ? propShowTopics : internalShowTopics;
+  const layoutDirection = propLayoutDirection !== undefined ? propLayoutDirection : internalLayoutDirection;
+
+  // Handlers (call prop callback if exists, otherwise set internal state)
+  const handleSearchChange = (query: string) => {
+    if (onSearchChange) onSearchChange(query);
+    else setInternalSearchQuery(query);
+  };
+
+  const handleFilterSystemNodesChange = (checked: boolean) => {
+    if (onFilterSystemNodesChange) onFilterSystemNodesChange(checked);
+    else setInternalFilterSystemNodes(checked);
+  };
+
+  const handleShowTopicsChange = (checked: boolean) => {
+    if (onShowTopicsChange) onShowTopicsChange(checked);
+    else setInternalShowTopics(checked);
+  };
+
+  const handleLayoutDirectionChange = (direction: LayoutDirection) => {
+    if (onLayoutDirectionChange) onLayoutDirectionChange(direction);
+    else setInternalLayoutDirection(direction);
+  };
+
   const [layoutCounter, setLayoutCounter] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,7 +231,7 @@ export function RQTGraph() {
   // Loading state
   if (isLoading && graphNodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4">
+      <div className="flex flex-col items-center justify-center py-12 px-4 h-full">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md">
           <div className="flex items-start gap-3">
             <div className="flex flex-col items-center justify-center">
@@ -193,12 +245,14 @@ export function RQTGraph() {
                 Please wait while we load the ROS topics...
               </p>
               <SpinnerCustom />
-              <Link href="/dashboard/settings/ros-connection">
-                <Button variant="outline" className="mt-4">
-                  Go to Settings
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              {!hideControls && (
+                <Link href="/dashboard/settings/ros-connection">
+                  <Button variant="outline" className="mt-4">
+                    Go to Settings
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -213,24 +267,26 @@ export function RQTGraph() {
       graphStructure.topicElements.size === 0)
   ) {
     return (
-      <div className="space-y-4">
-        <RQTGraphControls
-          nodeCount={0}
-          topicCount={0}
-          onRefresh={handleRefresh}
-          onFitView={handleFitView}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filterSystemNodes={filterSystemNodes}
-          onFilterSystemNodesChange={setFilterSystemNodes}
-          showTopics={showTopics}
-          onShowTopicsChange={setShowTopics}
-          layoutDirection={layoutDirection}
-          onLayoutDirectionChange={setLayoutDirection}
-          isLoading={isLoading}
-        />
+      <div className="space-y-4 h-full flex flex-col">
+        {!hideControls && (
+          <RQTGraphControls
+            nodeCount={0}
+            topicCount={0}
+            onRefresh={handleRefresh}
+            onFitView={handleFitView}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+            filterSystemNodes={filterSystemNodes}
+            onFilterSystemNodesChange={handleFilterSystemNodesChange}
+            showTopics={showTopics}
+            onShowTopicsChange={handleShowTopicsChange}
+            layoutDirection={layoutDirection}
+            onLayoutDirectionChange={handleLayoutDirectionChange}
+            isLoading={isLoading}
+          />
+        )}
 
-        <div className="flex flex-col items-center justify-center py-12">
+        <div className="flex flex-col items-center justify-center py-12 flex-1">
           <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 max-w-md text-center">
             <p className="text-sm font-semibold text-gray-900 mb-2">
               No nodes or topics detected
@@ -247,26 +303,28 @@ export function RQTGraph() {
   }
 
   return (
-    <div className="space-y-4">
-      <RQTGraphControls
-        nodeCount={graphStructure.nodeElements.size}
-        topicCount={graphStructure.topicElements.size}
-        onRefresh={handleRefresh}
-        onFitView={handleFitView}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        filterSystemNodes={filterSystemNodes}
-        onFilterSystemNodesChange={setFilterSystemNodes}
-        showTopics={showTopics}
-        onShowTopicsChange={setShowTopics}
-        layoutDirection={layoutDirection}
-        onLayoutDirectionChange={setLayoutDirection}
-        isLoading={isLoading}
-        onFullscreen={handleFullscreen}
-        isFullscreen={isFullscreen}
-      />
+    <div className="space-y-4 h-full flex flex-col">
+      {!hideControls && (
+        <RQTGraphControls
+          nodeCount={graphStructure.nodeElements.size}
+          topicCount={graphStructure.topicElements.size}
+          onRefresh={handleRefresh}
+          onFitView={handleFitView}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          filterSystemNodes={filterSystemNodes}
+          onFilterSystemNodesChange={handleFilterSystemNodesChange}
+          showTopics={showTopics}
+          onShowTopicsChange={handleShowTopicsChange}
+          layoutDirection={layoutDirection}
+          onLayoutDirectionChange={handleLayoutDirectionChange}
+          isLoading={isLoading}
+          onFullscreen={handleFullscreen}
+          isFullscreen={isFullscreen}
+        />
+      )}
 
-      <div ref={containerRef} className={isFullscreen ? "bg-white" : ""}>
+      <div ref={containerRef} className={`${isFullscreen ? "bg-white" : ""} flex-1 min-h-0 flex flex-col`}>
         {isFullscreen && (
           <div className="p-4 border-b border-teal-200 bg-teal-50">
             <RQTGraphControls
@@ -275,13 +333,13 @@ export function RQTGraph() {
               onRefresh={handleRefresh}
               onFitView={handleFitView}
               searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
+              onSearchChange={handleSearchChange}
               filterSystemNodes={filterSystemNodes}
-              onFilterSystemNodesChange={setFilterSystemNodes}
+              onFilterSystemNodesChange={handleFilterSystemNodesChange}
               showTopics={showTopics}
-              onShowTopicsChange={setShowTopics}
+              onShowTopicsChange={handleShowTopicsChange}
               layoutDirection={layoutDirection}
-              onLayoutDirectionChange={setLayoutDirection}
+              onLayoutDirectionChange={handleLayoutDirectionChange}
               isLoading={isLoading}
               onFullscreen={handleFullscreen}
               isFullscreen={isFullscreen}
@@ -289,24 +347,26 @@ export function RQTGraph() {
           </div>
         )}
 
-        <Card className="shadow-none pt-0 rounded-xl border-teal-200">
-          <CardHeader className="bg-teal-50 border-teal-200 border-b rounded-t-xl pt-6">
-            <div className="flex items-start gap-3">
-              <Network className="h-5 w-5 mt-0.5 text-teal-600" />
-              <div className="flex-1 min-w-0">
-                <h2 className="text-base text-teal-900 font-semibold">
-                  ROS Computation Graph
-                </h2>
-                <p className="mt-1 text-xs text-teal-800">
-                  Interactive visualization of ROS nodes and topics
-                </p>
+        <Card className={`shadow-none pt-0 rounded-xl border-teal-200 flex-1 flex flex-col overflow-hidden ${hideControls ? "border-0 rounded-none" : ""}`}>
+          {!hideControls && (
+            <CardHeader className="bg-teal-50 border-teal-200 border-b rounded-t-xl pt-6 shrink-0">
+              <div className="flex items-start gap-3">
+                <Network className="h-5 w-5 mt-0.5 text-teal-600" />
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base text-teal-900 font-semibold">
+                    ROS Computation Graph
+                  </h2>
+                  <p className="mt-1 text-xs text-teal-800">
+                    Interactive visualization of ROS nodes and topics
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardHeader>
+            </CardHeader>
+          )}
 
-          <CardContent className="px-0 py-0">
+          <CardContent className="px-0 py-0 flex-1 min-h-0 relative">
             <div
-              style={{ height: isFullscreen ? "calc(100vh - 200px)" : "700px" }}
+              className="h-full w-full absolute inset-0"
             >
               <ReactFlow
                 nodes={nodes}
@@ -360,7 +420,7 @@ export function RQTGraph() {
         </Card>
       </div>
 
-      {!isFullscreen && (
+      {!isFullscreen && !hideControls && (
         <RQTGraphDetailsPanel selectedElement={selectedElement} />
       )}
     </div>

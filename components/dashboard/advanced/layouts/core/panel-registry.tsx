@@ -4,6 +4,8 @@ import { LivePlotPanel } from "../panels/plot";
 import { LiveImagePanel } from "../panels/image";
 import { LiveRawTopicViewer } from "../panels/raw-topic-viewer";
 import { Vis3DPanel } from '../panels/3d-vis/3d-vis-panel';
+import { RqtGraphPanel } from '../panels/rqt-graph';
+import { TFTreePanel } from '../panels/tf-tree';
 
 class PanelRegistry {
   private panels = new Map<string, PanelTypeInfo>();
@@ -92,4 +94,14 @@ panelRegistry.register("Raw Topic Viewer", {
 panelRegistry.register("3D Visualization", {
   name: "3D Visualization",
   component: Vis3DPanel,
+});
+
+panelRegistry.register("Rqt Graph", {
+  name: "Rqt Graph",
+  component: RqtGraphPanel,
+});
+
+panelRegistry.register("TF Tree", {
+  name: "TF Tree",
+  component: TFTreePanel,
 });

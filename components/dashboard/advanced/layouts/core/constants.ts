@@ -36,6 +36,8 @@ export const PANEL_TYPES = [
   "Image Panel",
   "Raw Topic Viewer",
   "3D Visualization",
+  "Rqt Graph",
+  "TF Tree",
   // Future panel types to implement:
   // "Gauge Panel",
   // "Indicator Panel",

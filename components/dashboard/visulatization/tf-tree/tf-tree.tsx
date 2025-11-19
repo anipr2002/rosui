@@ -23,7 +23,23 @@ import type { TFNodeData } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
 import { Loader2, GitBranch } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 
-export function TFTree() {
+interface TFTreeProps {
+  hideControls?: boolean;
+  hideDetailsPanel?: boolean;
+  searchQuery?: string;
+  layoutDirection?: 'TB' | 'LR' | 'RL' | 'BT';
+  showMinimap?: boolean;
+  staleTimeout?: number;
+}
+
+export function TFTree({
+  hideControls = false,
+  hideDetailsPanel = false,
+  searchQuery: externalSearchQuery,
+  layoutDirection: externalLayoutDirection = 'TB',
+  showMinimap = true,
+  staleTimeout: externalStaleTimeout,
+}: TFTreeProps = {}) {
   const nodeTypes = useMemo(
     () => ({
       tfNode: TFNode,
@@ -38,7 +54,8 @@ export function TFTree() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<TFNodeData | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
+  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
   const [layoutCounter, setLayoutCounter] = useState(0);
   const { fitView } = useReactFlow();
 
@@ -95,7 +112,7 @@ export function TFTree() {
       }
 
       const { nodes: layoutedNodes, edges: layoutedEdges } =
-        getLayoutedElements(filteredNodes, filteredEdges, "TB");
+        getLayoutedElements(filteredNodes, filteredEdges, externalLayoutDirection as any);
 
       setNodes(layoutedNodes);
       setEdges(layoutedEdges);
@@ -107,7 +124,7 @@ export function TFTree() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [treeStructure, lastUpdate, searchQuery, setNodes, setEdges, fitView]);
+  }, [treeStructure, lastUpdate, searchQuery, externalLayoutDirection, setNodes, setEdges, fitView]);
 
   // Periodic update to refresh node ages
   useEffect(() => {
@@ -182,48 +199,37 @@ export function TFTree() {
 
   return (
     <div className="space-y-4">
-      <TFControls
-        frameCount={treeStructure?.nodes.size || 0}
-        onRefresh={handleRefresh}
-        onFitView={handleFitView}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
+      {!hideControls && (
+        <TFControls
+          frameCount={treeStructure?.nodes.size || 0}
+          onRefresh={handleRefresh}
+          onFitView={handleFitView}
+          searchQuery={internalSearchQuery}
+          onSearchChange={setInternalSearchQuery}
+        />
+      )}
 
-      <Card className="shadow-none pt-0 rounded-xl border-blue-200">
-        <CardHeader className="bg-blue-50 border-blue-200 border-b rounded-t-xl pt-6">
-          <div className="flex items-start gap-3">
-            <GitBranch className="h-5 w-5 mt-0.5 text-blue-600" />
-            <div className="flex-1 min-w-0">
-              <h2 className="text-base text-blue-900 font-semibold">
-                Transform Tree Visualization
-              </h2>
-              <p className="mt-1 text-xs text-blue-800">
-                Interactive visualization of the TF (Transform) tree structure
-              </p>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="px-0 py-0">
-          <div style={{ height: "600px" }}>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onNodeClick={onNodeClick}
-              onPaneClick={onPaneClick}
-              nodeTypes={nodeTypes}
-              fitView
-              minZoom={0.1}
-              maxZoom={2}
-              defaultEdgeOptions={{
-                type: "smoothstep",
-              }}
-            >
-              <Background color="#e5e7eb" gap={16} />
-              <Controls showInteractive={false} />
+      {hideControls ? (
+        // Panel mode - no card wrapper
+        <div style={{ height: "100%", width: "100%" }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
+            nodeTypes={nodeTypes}
+            fitView
+            minZoom={0.1}
+            maxZoom={2}
+            defaultEdgeOptions={{
+              type: "smoothstep",
+            }}
+          >
+            <Background color="#e5e7eb" gap={16} />
+            <Controls showInteractive={false} />
+            {showMinimap && (
               <MiniMap
                 nodeColor={(node) => {
                   const data = node.data as TFNodeData;
@@ -236,27 +242,93 @@ export function TFTree() {
                   backgroundColor: "#f9fafb",
                 }}
               />
+            )}
 
-              <Panel
-                position="top-right"
-                className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
+            <Panel
+              position="top-right"
+              className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
+            >
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>🟢 Fresh (&lt;1s)</div>
+                <div>🟡 Recent (1-5s)</div>
+                <div>🟠 Stale (5-10s)</div>
+                <div>🔴 Very Old (&gt;10s)</div>
+              </div>
+            </Panel>
+          </ReactFlow>
+        </div>
+      ) : (
+        // Standalone mode - with card wrapper
+        <Card className="shadow-none pt-0 rounded-xl border-blue-200">
+          <CardHeader className="bg-blue-50 border-blue-200 border-b rounded-t-xl pt-6">
+            <div className="flex items-start gap-3">
+              <GitBranch className="h-5 w-5 mt-0.5 text-blue-600" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base text-blue-900 font-semibold">
+                  Transform Tree Visualization
+                </h2>
+                <p className="mt-1 text-xs text-blue-800">
+                  Interactive visualization of the TF (Transform) tree structure
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="px-0 py-0">
+            <div style={{ height: "600px" }}>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onNodeClick={onNodeClick}
+                onPaneClick={onPaneClick}
+                nodeTypes={nodeTypes}
+                fitView
+                minZoom={0.1}
+                maxZoom={2}
+                defaultEdgeOptions={{
+                  type: "smoothstep",
+                }}
               >
-                <div className="text-xs text-gray-600 space-y-1">
-                  <div>🟢 Fresh (&lt;1s)</div>
-                  <div>🟡 Recent (1-5s)</div>
-                  <div>🟠 Stale (5-10s)</div>
-                  <div>🔴 Very Old (&gt;10s)</div>
-                </div>
-              </Panel>
-            </ReactFlow>
-          </div>
-        </CardContent>
-      </Card>
+                <Background color="#e5e7eb" gap={16} />
+                <Controls showInteractive={false} />
+                <MiniMap
+                  nodeColor={(node) => {
+                    const data = node.data as TFNodeData;
+                    if (data.isRoot) return "#3b82f6";
+                    if (data.isStatic) return "#9ca3af";
+                    return "#6b7280";
+                  }}
+                  maskColor="rgba(0, 0, 0, 0.1)"
+                  style={{
+                    backgroundColor: "#f9fafb",
+                  }}
+                />
 
-      <TFDetailsPanel
-        selectedNode={selectedNode}
-        treeStructure={treeStructure}
-      />
+                <Panel
+                  position="top-right"
+                  className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
+                >
+                  <div className="text-xs text-gray-600 space-y-1">
+                    <div>🟢 Fresh (&lt;1s)</div>
+                    <div>🟡 Recent (1-5s)</div>
+                    <div>🟠 Stale (5-10s)</div>
+                    <div>🔴 Very Old (&gt;10s)</div>
+                  </div>
+                </Panel>
+              </ReactFlow>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!hideDetailsPanel && (
+        <TFDetailsPanel
+          selectedNode={selectedNode}
+          treeStructure={treeStructure}
+        />
+      )}
     </div>
   );
 }
