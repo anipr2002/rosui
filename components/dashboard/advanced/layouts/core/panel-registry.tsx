@@ -2,6 +2,7 @@ import React from "react";
 import type { PanelTypeInfo } from "./types";
 import { LivePlotPanel } from "../panels/plot";
 import { LiveImagePanel } from "../panels/image";
+import { LiveRawTopicViewer } from "../panels/raw-topic-viewer";
 
 class PanelRegistry {
   private panels = new Map<string, PanelTypeInfo>();
@@ -75,4 +76,9 @@ panelRegistry.register("Plot Panel", {
 panelRegistry.register("Image Panel", {
   name: "Image Panel",
   component: LiveImagePanel,
+});
+
+panelRegistry.register("Raw Topic Viewer", {
+  name: "Raw Topic Viewer",
+  component: LiveRawTopicViewer,
 });

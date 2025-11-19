@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/context-menu";
 
 import { panelRegistry } from "./panel-registry";
-import { PANEL_TYPES } from "./constants";
+import { PANEL_TYPES, ROW_HEIGHT, MIN_ROWSPAN } from "./constants";
 import type { Panel } from "./types";
 
 // Memoized context menu component
@@ -92,7 +92,7 @@ const SortablePanel = React.memo<SortablePanelProps>(
     } = useSortable({ id: panel.id });
 
     const canIncreaseColspan = panel.colspan < maxCols;
-    const canIncreaseRowspan = panel.rowspan < 3;
+    const canIncreaseRowspan = true; // Always allow increasing rowspan with granular grid
     const canShowCornerResize = canIncreaseColspan && canIncreaseRowspan;
 
     const style = useMemo(
@@ -101,7 +101,7 @@ const SortablePanel = React.memo<SortablePanelProps>(
         transition: isResizing ? "none" : transition,
         opacity: isDragging ? 0.5 : 1,
         gridColumn: `span ${panel.colspan}`,
-        gridRow: `span ${panel.rowspan}`,
+        gridRow: `span ${Math.max(panel.rowspan, MIN_ROWSPAN)}`,
       }),
       [
         transform,
@@ -129,9 +129,10 @@ const SortablePanel = React.memo<SortablePanelProps>(
           const deltaX = moveEvent.clientX - startPosRef.current.x;
           const deltaY = moveEvent.clientY - startPosRef.current.y;
 
-          // Approximate: every ~200px = 1 column/row
+          // Approximate: every ~200px = 1 column
+          // For rows: every ROW_HEIGHT + gap (8px) = 1 row unit
           const colDelta = Math.round(deltaX / 200);
-          const rowDelta = Math.round(deltaY / 200);
+          const rowDelta = Math.round(deltaY / (ROW_HEIGHT + 8));
 
           let newColspan = startPosRef.current.colspan;
           let newRowspan = startPosRef.current.rowspan;
@@ -144,8 +145,8 @@ const SortablePanel = React.memo<SortablePanelProps>(
           }
           if (edge === "bottom" || edge === "corner") {
             newRowspan = Math.max(
-              1,
-              Math.min(3, startPosRef.current.rowspan + rowDelta)
+              MIN_ROWSPAN,
+              startPosRef.current.rowspan + rowDelta
             );
           }
 
@@ -193,7 +194,7 @@ const SortablePanel = React.memo<SortablePanelProps>(
         <div
           ref={setNodeRef}
           style={style}
-          className={`${panel.color} border-2 rounded-xl shadow-none min-h-[250px] relative group ${
+          className={`${panel.color} border-2 rounded-xl shadow-none relative group overflow-hidden ${
             isDragging ? "ring-2 ring-indigo-500 ring-offset-2" : ""
           } ${isResizing ? "ring-2 ring-blue-400" : ""}`}
         >
@@ -207,18 +208,27 @@ const SortablePanel = React.memo<SortablePanelProps>(
             <GripVertical className="h-4 w-4 text-gray-600" />
           </div>
 
+          {/* Delete Button for Default Panels */}
+          {panel.panelType === "Default" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              className="absolute p-2 top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-lg z-10 hover:bg-red-50 text-gray-600 hover:text-red-600"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </button>
+          )}
+
           {/* Right Edge Resize Handle */}
           {canIncreaseColspan && (
             <div
               onMouseDown={(e) => handleResizeStart(e, "right")}
               onContextMenu={(e) => e.preventDefault()}
-              className="absolute top-0 right-0 w-2 h-full rounded-full cursor-ew-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
-              style={{
-                background:
-                  "linear-gradient(to right, transparent, rgba(59, 130, 246, 0.5))",
-              }}
+              className="absolute top-2 bottom-2 right-[-4px] w-4 cursor-ew-resize group/handle z-20 flex items-center justify-center"
             >
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-blue-500 rounded-l" />
+              <div className="w-1 h-8 bg-gray-200 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity shadow-sm hover:bg-blue-500" />
             </div>
           )}
 
@@ -227,13 +237,9 @@ const SortablePanel = React.memo<SortablePanelProps>(
             <div
               onMouseDown={(e) => handleResizeStart(e, "bottom")}
               onContextMenu={(e) => e.preventDefault()}
-              className="absolute bottom-0 left-0 h-2 w-full cursor-ns-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-20"
-              style={{
-                background:
-                  "linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.5))",
-              }}
+              className="absolute bottom-[-4px] left-2 right-2 h-4 cursor-ns-resize group/handle z-20 flex items-center justify-center"
             >
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-1 w-12 bg-blue-500 rounded-t" />
+              <div className="h-1 w-8 bg-gray-200 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity shadow-sm hover:bg-blue-500" />
             </div>
           )}
 
@@ -242,9 +248,9 @@ const SortablePanel = React.memo<SortablePanelProps>(
             <div
               onMouseDown={(e) => handleResizeStart(e, "corner")}
               onContextMenu={(e) => e.preventDefault()}
-              className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-50 z-30"
+              className="absolute bottom-[-6px] right-[-6px] w-6 h-6 cursor-nwse-resize group/handle z-30 flex items-center justify-center"
             >
-              <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-blue-500 rounded-br" />
+              <div className="w-2 h-2 bg-gray-200 rounded-full opacity-0 group-hover/handle:opacity-100 transition-opacity shadow-sm hover:bg-blue-500 ring-2 ring-white" />
             </div>
           )}
 

@@ -15,6 +15,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Layout } from "lucide-react";
+import { ROW_HEIGHT } from "./constants";
 
 import { SortablePanel } from "./sortable-panel";
 import type { Panel } from "./types";
@@ -96,9 +97,10 @@ const PanelGrid = React.memo<PanelGridProps>(
       >
         <SortableContext items={panelIds} strategy={rectSortingStrategy}>
           <div
-            className="grid gap-2 auto-rows-fr"
+            className="grid gap-2 auto-rows-auto"
             style={{
               gridTemplateColumns: `repeat(${maxCols}, minmax(0, 1fr))`,
+              gridAutoRows: `${ROW_HEIGHT}px`,
             }}
           >
             {panels.map((panel) => (
