@@ -3,6 +3,7 @@ import type { PanelTypeInfo } from "./types";
 import { LivePlotPanel } from "../panels/plot";
 import { LiveImagePanel } from "../panels/image";
 import { LiveRawTopicViewer } from "../panels/raw-topic-viewer";
+import { Vis3DPanel } from '../panels/3d-vis/3d-vis-panel';
 
 class PanelRegistry {
   private panels = new Map<string, PanelTypeInfo>();
@@ -81,4 +82,14 @@ panelRegistry.register("Image Panel", {
 panelRegistry.register("Raw Topic Viewer", {
   name: "Raw Topic Viewer",
   component: LiveRawTopicViewer,
+});
+
+// panelRegistry.register("Diagnostics Panel", {
+//   name: "Diagnostics Panel",
+//   component: DiagnosticsPanel,
+// });
+
+panelRegistry.register("3D Visualization", {
+  name: "3D Visualization",
+  component: Vis3DPanel,
 });

@@ -92,8 +92,12 @@ export interface DiagnosticsPanelConfig extends BasePanelConfig {
   pinnedDiagnostics: string[]
 }
 
+export interface Vis3DPanelConfig extends BasePanelConfig {
+  type: 'vis3d'
+}
+
 // Union type for all panel types (extensible for future panel types)
-export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig | RawTopicViewerPanelConfig | DiagnosticsPanelConfig
+export type PanelConfig = PlotPanelConfig | GaugePanelConfig | IndicatorPanelConfig | RawTopicViewerPanelConfig | DiagnosticsPanelConfig | Vis3DPanelConfig
 
 interface PanelsState {
   // File state
@@ -119,6 +123,7 @@ interface PanelsState {
   indicatorPanels: IndicatorPanelConfig[]
   rawTopicViewerPanels: RawTopicViewerPanelConfig[]
   diagnosticsPanels: DiagnosticsPanelConfig[]
+  vis3DPanels: Vis3DPanelConfig[]
   
   // Actions
   loadFile: (file: File) => Promise<void>
@@ -171,6 +176,10 @@ interface PanelsState {
   addDiagnosticsPanel: () => void
   updateDiagnosticsPanel: (panelId: string, config: Partial<DiagnosticsPanelConfig>) => void
   togglePinnedDiagnostic: (panelId: string, diagnosticName: string) => void
+
+  // Vis3D panel specific
+  addVis3DPanel: () => void
+  updateVis3DPanel: (panelId: string, config: Partial<Vis3DPanelConfig>) => void
   
   // Data access
   getMessagesForTopic: (topic: string, startTime?: bigint, endTime?: bigint) => McapMessage[]
@@ -200,6 +209,7 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   indicatorPanels: [],
   rawTopicViewerPanels: [],
   diagnosticsPanels: [],
+  vis3DPanels: [],
   
   // Load MCAP file
   loadFile: async (file: File) => {
@@ -370,7 +380,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
         indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
         rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
-        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[],
+        vis3DPanels: newPanels.filter(p => p.type === 'vis3d') as Vis3DPanelConfig[]
       }
     })
   },
@@ -401,7 +412,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
         indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
         rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
-        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[],
+        vis3DPanels: newPanels.filter(p => p.type === 'vis3d') as Vis3DPanelConfig[]
       }
     })
   },
@@ -415,7 +427,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
         indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
         rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
-        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[],
+        vis3DPanels: newPanels.filter(p => p.type === 'vis3d') as Vis3DPanelConfig[]
       }
     })
   },
@@ -429,7 +442,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
         indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
         rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
-        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[],
+        vis3DPanels: newPanels.filter(p => p.type === 'vis3d') as Vis3DPanelConfig[]
       }
     })
   },
@@ -455,7 +469,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
         indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
         rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
-        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[],
+        vis3DPanels: newPanels.filter(p => p.type === 'vis3d') as Vis3DPanelConfig[]
       }
     })
   },
@@ -876,6 +891,43 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
           p.id === panelId
             ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
             : p
+        )
+      }
+    })
+  },
+  
+  // Vis3D panel specific
+  addVis3DPanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
+    const newPanel: Vis3DPanelConfig = {
+      id: `panel-${Date.now()}-${Math.random()}`,
+      type: 'vis3d',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white'
+    }
+    
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        vis3DPanels: [...state.vis3DPanels, newPanel]
+      }
+    })
+  },
+  
+  updateVis3DPanel: (panelId: string, config: Partial<Vis3DPanelConfig>) => {
+    set((state) => {
+      const newPanels = state.panels.map(p =>
+        p.id === panelId && p.type === 'vis3d' ? { ...p, ...config } as Vis3DPanelConfig : p
+      )
+      return {
+        panels: newPanels,
+        vis3DPanels: state.vis3DPanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as Vis3DPanelConfig : p
         )
       }
     })
