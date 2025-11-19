@@ -17,8 +17,24 @@ export interface SeriesConfig {
   enabled: boolean
 }
 
-export interface PlotPanelConfig {
+export interface Page {
   id: string
+  name: string
+  layout: 'single' | 'twoColumn' | 'threeColumn' | 'fourColumn'
+  createdAt: number
+}
+
+export interface BasePanelConfig {
+  id: string
+  type: string
+  // Layout
+  pageId: string
+  colspan: number
+  rowspan: number
+  color: string
+}
+
+export interface PlotPanelConfig extends BasePanelConfig {
   type: 'plot'
   series: SeriesConfig[]
   xAxisLabel: string
@@ -28,8 +44,7 @@ export interface PlotPanelConfig {
   yMax?: number
 }
 
-export interface GaugePanelConfig {
-  id: string
+export interface GaugePanelConfig extends BasePanelConfig {
   type: 'gauge'
   topic: string
   messagePath: string
@@ -51,8 +66,7 @@ export interface IndicatorRule {
   label: string
 }
 
-export interface IndicatorPanelConfig {
-  id: string
+export interface IndicatorPanelConfig extends BasePanelConfig {
   type: 'indicator'
   topic: string
   messagePath: string
@@ -60,8 +74,7 @@ export interface IndicatorPanelConfig {
   rules: IndicatorRule[]
 }
 
-export interface RawTopicViewerPanelConfig {
-  id: string
+export interface RawTopicViewerPanelConfig extends BasePanelConfig {
   type: 'raw-topic-viewer'
   topic: string
   maxMessageLength: number
@@ -69,8 +82,7 @@ export interface RawTopicViewerPanelConfig {
   showTimestamp: boolean
 }
 
-export interface DiagnosticsPanelConfig {
-  id: string
+export interface DiagnosticsPanelConfig extends BasePanelConfig {
   type: 'diagnostics'
   topic: string
   minLevel: 0 | 1 | 2 | 3 // 0=OK, 1=WARN, 2=ERROR, 3=STALE
@@ -98,6 +110,8 @@ interface PanelsState {
   
   // Panel configurations
   panels: PanelConfig[]
+  pages: Page[]
+  activePageId: string | null
   
   // Getters (for backward compatibility and convenience)
   plotPanels: PlotPanelConfig[]
@@ -114,8 +128,18 @@ interface PanelsState {
   pause: () => void
   setPlaybackSpeed: (speed: number) => void
   
+  // Page management
+  addPage: () => void
+  removePage: (pageId: string) => void
+  renamePage: (pageId: string, name: string) => void
+  setActivePage: (pageId: string) => void
+  updatePageLayout: (pageId: string, layout: Page['layout']) => void
+
   // Panel management (generic)
   removePanel: (panelId: string) => void
+  updatePanel: (panelId: string, updates: Partial<PanelConfig>) => void
+  resizePanel: (panelId: string, colspan: number, rowspan: number) => void
+  movePanel: (panels: PanelConfig[]) => void
   
   // Plot panel specific
   addPlotPanel: () => void
@@ -168,6 +192,9 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   playbackSpeed: 1,
   
   panels: [],
+  pages: [],
+  activePageId: null,
+
   plotPanels: [],
   gaugePanels: [],
   indicatorPanels: [],
@@ -183,13 +210,25 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         console.log('MCAP parsing progress:', progress)
       })
       
+      // Create default page if none exists
+      const defaultPageId = `page-${Date.now()}`
+      const defaultPage: Page = {
+        id: defaultPageId,
+        name: 'Page 1',
+        layout: 'threeColumn',
+        createdAt: Date.now()
+      }
+
       set({
         file,
         metadata: result.metadata,
         messages: result.messages,
         currentTime: result.metadata.startTime,
         isLoading: false,
-        error: null
+        error: null,
+        pages: [defaultPage],
+        activePageId: defaultPageId,
+        panels: [] // Reset panels on new file load
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load file'
@@ -198,7 +237,10 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         error: errorMessage,
         file: null,
         metadata: null,
-        messages: null
+        messages: null,
+        pages: [],
+        activePageId: null,
+        panels: []
       })
       throw error
     }
@@ -215,7 +257,9 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       currentTime: 0n,
       isPlaying: false,
       error: null,
-      panels: []
+      panels: [],
+      pages: [],
+      activePageId: null
     })
   },
   
@@ -290,52 +334,181 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   setPlaybackSpeed: (speed: number) => {
     set({ playbackSpeed: speed })
   },
+
+  // Page management
+  addPage: () => {
+    const newPage: Page = {
+      id: `page-${Date.now()}`,
+      name: `Page ${get().pages.length + 1}`,
+      layout: 'threeColumn',
+      createdAt: Date.now()
+    }
+    set(state => ({
+      pages: [...state.pages, newPage],
+      activePageId: newPage.id
+    }))
+  },
+
+  removePage: (pageId: string) => {
+    set(state => {
+      const newPages = state.pages.filter(p => p.id !== pageId)
+      // If we removed the active page, switch to another one
+      let newActiveId = state.activePageId
+      if (state.activePageId === pageId) {
+        newActiveId = newPages.length > 0 ? newPages[0].id : null
+      }
+      
+      // Also remove panels on this page
+      const newPanels = state.panels.filter(p => p.pageId !== pageId)
+      
+      return {
+        pages: newPages,
+        activePageId: newActiveId,
+        panels: newPanels,
+        // Update derived lists
+        plotPanels: newPanels.filter(p => p.type === 'plot') as PlotPanelConfig[],
+        gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
+        indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
+        rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+      }
+    })
+  },
+
+  renamePage: (pageId: string, name: string) => {
+    set(state => ({
+      pages: state.pages.map(p => p.id === pageId ? { ...p, name } : p)
+    }))
+  },
+
+  setActivePage: (pageId: string) => {
+    set({ activePageId: pageId })
+  },
+
+  updatePageLayout: (pageId: string, layout: Page['layout']) => {
+    set(state => ({
+      pages: state.pages.map(p => p.id === pageId ? { ...p, layout } : p)
+    }))
+  },
   
   // Panel management (generic - works for all panel types)
   removePanel: (panelId: string) => {
-    set((state) => ({
-      panels: state.panels.filter(p => p.id !== panelId),
-      plotPanels: state.plotPanels.filter(p => p.id !== panelId),
-      gaugePanels: state.gaugePanels.filter(p => p.id !== panelId),
-      indicatorPanels: state.indicatorPanels.filter(p => p.id !== panelId),
-      rawTopicViewerPanels: state.rawTopicViewerPanels.filter(p => p.id !== panelId),
-      diagnosticsPanels: state.diagnosticsPanels.filter(p => p.id !== panelId)
-    }))
+    set((state) => {
+      const newPanels = state.panels.filter(p => p.id !== panelId)
+      return {
+        panels: newPanels,
+        plotPanels: newPanels.filter(p => p.type === 'plot') as PlotPanelConfig[],
+        gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
+        indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
+        rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+      }
+    })
+  },
+
+  updatePanel: (panelId: string, updates: Partial<PanelConfig>) => {
+    set((state) => {
+      const newPanels = state.panels.map(p => p.id === panelId ? { ...p, ...updates } as PanelConfig : p)
+      return {
+        panels: newPanels,
+        plotPanels: newPanels.filter(p => p.type === 'plot') as PlotPanelConfig[],
+        gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
+        indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
+        rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+      }
+    })
+  },
+
+  resizePanel: (panelId: string, colspan: number, rowspan: number) => {
+    set((state) => {
+      const newPanels = state.panels.map(p => p.id === panelId ? { ...p, colspan, rowspan } : p)
+      return {
+        panels: newPanels,
+        plotPanels: newPanels.filter(p => p.type === 'plot') as PlotPanelConfig[],
+        gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
+        indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
+        rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+      }
+    })
+  },
+
+  movePanel: (panels: PanelConfig[]) => {
+    set((state) => {
+      // We only update the order of panels for the current page
+      // But we need to keep panels from other pages intact
+      // The passed 'panels' array should contain all panels for the current page in the new order
+      
+      // This is a bit tricky because 'panels' argument might only have the panels for the current page
+      // So we need to merge it with panels from other pages
+      
+      const activePageId = state.activePageId
+      if (!activePageId) return {}
+
+      const otherPagePanels = state.panels.filter(p => p.pageId !== activePageId)
+      const newPanels = [...otherPagePanels, ...panels]
+      
+      return {
+        panels: newPanels,
+        plotPanels: newPanels.filter(p => p.type === 'plot') as PlotPanelConfig[],
+        gaugePanels: newPanels.filter(p => p.type === 'gauge') as GaugePanelConfig[],
+        indicatorPanels: newPanels.filter(p => p.type === 'indicator') as IndicatorPanelConfig[],
+        rawTopicViewerPanels: newPanels.filter(p => p.type === 'raw-topic-viewer') as RawTopicViewerPanelConfig[],
+        diagnosticsPanels: newPanels.filter(p => p.type === 'diagnostics') as DiagnosticsPanelConfig[]
+      }
+    })
   },
   
   // Plot panel specific
   addPlotPanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
     const newPanel: PlotPanelConfig = {
       id: `panel-${Date.now()}-${Math.random()}`,
       type: 'plot',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white',
       series: [],
       xAxisLabel: 'Time',
       yAxisLabel: 'Value',
       showLegend: true
     }
     
-    set((state) => ({
-      panels: [...state.panels, newPanel],
-      plotPanels: [...state.plotPanels, newPanel]
-    }))
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        plotPanels: [...state.plotPanels, newPanel]
+      }
+    })
   },
   
   removePlotPanel: (panelId: string) => {
-    set((state) => ({
-      panels: state.panels.filter(p => p.id !== panelId),
-      plotPanels: state.plotPanels.filter(p => p.id !== panelId)
-    }))
+    set((state) => {
+      const newPanels = state.panels.filter(p => p.id !== panelId)
+      return {
+        panels: newPanels,
+        plotPanels: state.plotPanels.filter(p => p.id !== panelId)
+      }
+    })
   },
   
   updatePlotPanel: (panelId: string, config: Partial<PlotPanelConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'plot' ? { ...p, ...config } as PlotPanelConfig : p
-      ),
-      plotPanels: state.plotPanels.map(p =>
-        p.id === panelId ? { ...p, ...config } as PlotPanelConfig : p
       )
-    }))
+      return {
+        panels: newPanels,
+        plotPanels: state.plotPanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as PlotPanelConfig : p
+        )
+      }
+    })
   },
   
   // Series management
@@ -345,23 +518,26 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       id: `series-${Date.now()}-${Math.random()}`
     }
     
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'plot'
           ? { ...p, series: [...p.series, newSeries] }
           : p
-      ),
-      plotPanels: state.plotPanels.map(p =>
-        p.id === panelId
-          ? { ...p, series: [...p.series, newSeries] }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        plotPanels: state.plotPanels.map(p =>
+          p.id === panelId
+            ? { ...p, series: [...p.series, newSeries] }
+            : p
+        )
+      }
+    })
   },
   
   updateSeries: (panelId: string, seriesId: string, updates: Partial<SeriesConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'plot'
           ? {
               ...p,
@@ -370,41 +546,54 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
               )
             }
           : p
-      ),
-      plotPanels: state.plotPanels.map(p =>
-        p.id === panelId
-          ? {
-              ...p,
-              series: p.series.map(s =>
-                s.id === seriesId ? { ...s, ...updates } : s
-              )
-            }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        plotPanels: state.plotPanels.map(p =>
+          p.id === panelId
+            ? {
+                ...p,
+                series: p.series.map(s =>
+                  s.id === seriesId ? { ...s, ...updates } : s
+                )
+              }
+            : p
+        )
+      }
+    })
   },
   
   removeSeries: (panelId: string, seriesId: string) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'plot'
           ? { ...p, series: p.series.filter(s => s.id !== seriesId) }
           : p
-      ),
-      plotPanels: state.plotPanels.map(p =>
-        p.id === panelId
-          ? { ...p, series: p.series.filter(s => s.id !== seriesId) }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        plotPanels: state.plotPanels.map(p =>
+          p.id === panelId
+            ? { ...p, series: p.series.filter(s => s.id !== seriesId) }
+            : p
+        )
+      }
+    })
   },
   
   // Gauge panel specific
   addGaugePanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
     const defaultTopic = get().metadata?.topics[0]?.name || ''
     const newPanel: GaugePanelConfig = {
       id: `panel-${Date.now()}-${Math.random()}`,
       type: 'gauge',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white',
       topic: defaultTopic,
       messagePath: '.data',
       min: 0,
@@ -416,50 +605,69 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       reverseDirection: false
     }
     
-    set((state) => ({
-      panels: [...state.panels, newPanel],
-      gaugePanels: [...state.gaugePanels, newPanel]
-    }))
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        gaugePanels: [...state.gaugePanels, newPanel]
+      }
+    })
   },
   
   updateGaugePanel: (panelId: string, config: Partial<GaugePanelConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'gauge' ? { ...p, ...config } as GaugePanelConfig : p
-      ),
-      gaugePanels: state.gaugePanels.map(p =>
-        p.id === panelId ? { ...p, ...config } as GaugePanelConfig : p
       )
-    }))
+      return {
+        panels: newPanels,
+        gaugePanels: state.gaugePanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as GaugePanelConfig : p
+        )
+      }
+    })
   },
   
   // Indicator panel specific
   addIndicatorPanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
     const defaultTopic = get().metadata?.topics[0]?.name || ''
     const newPanel: IndicatorPanelConfig = {
       id: `panel-${Date.now()}-${Math.random()}`,
       type: 'indicator',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white',
       topic: defaultTopic,
       messagePath: '.data',
       style: 'bulb',
       rules: []
     }
     
-    set((state) => ({
-      panels: [...state.panels, newPanel],
-      indicatorPanels: [...state.indicatorPanels, newPanel]
-    }))
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        indicatorPanels: [...state.indicatorPanels, newPanel]
+      }
+    })
   },
   
   updateIndicatorPanel: (panelId: string, config: Partial<IndicatorPanelConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'indicator' ? { ...p, ...config } as IndicatorPanelConfig : p
-      ),
-      indicatorPanels: state.indicatorPanels.map(p =>
-        p.id === panelId ? { ...p, ...config } as IndicatorPanelConfig : p
       )
-    }))
+      return {
+        panels: newPanels,
+        indicatorPanels: state.indicatorPanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as IndicatorPanelConfig : p
+        )
+      }
+    })
   },
   
   addIndicatorRule: (panelId: string, rule: Omit<IndicatorRule, 'id'>) => {
@@ -468,23 +676,26 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       id: `rule-${Date.now()}-${Math.random()}`
     }
     
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'indicator'
           ? { ...p, rules: [...p.rules, newRule] }
           : p
-      ),
-      indicatorPanels: state.indicatorPanels.map(p =>
-        p.id === panelId
-          ? { ...p, rules: [...p.rules, newRule] }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        indicatorPanels: state.indicatorPanels.map(p =>
+          p.id === panelId
+            ? { ...p, rules: [...p.rules, newRule] }
+            : p
+        )
+      }
+    })
   },
   
   updateIndicatorRule: (panelId: string, ruleId: string, updates: Partial<IndicatorRule>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'indicator'
           ? {
               ...p,
@@ -493,33 +704,39 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
               )
             }
           : p
-      ),
-      indicatorPanels: state.indicatorPanels.map(p =>
-        p.id === panelId
-          ? {
-              ...p,
-              rules: p.rules.map(r =>
-                r.id === ruleId ? { ...r, ...updates } : r
-              )
-            }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        indicatorPanels: state.indicatorPanels.map(p =>
+          p.id === panelId
+            ? {
+                ...p,
+                rules: p.rules.map(r =>
+                  r.id === ruleId ? { ...r, ...updates } : r
+                )
+              }
+            : p
+        )
+      }
+    })
   },
   
   removeIndicatorRule: (panelId: string, ruleId: string) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'indicator'
           ? { ...p, rules: p.rules.filter(r => r.id !== ruleId) }
           : p
-      ),
-      indicatorPanels: state.indicatorPanels.map(p =>
-        p.id === panelId
-          ? { ...p, rules: p.rules.filter(r => r.id !== ruleId) }
-          : p
       )
-    }))
+      return {
+        panels: newPanels,
+        indicatorPanels: state.indicatorPanels.map(p =>
+          p.id === panelId
+            ? { ...p, rules: p.rules.filter(r => r.id !== ruleId) }
+            : p
+        )
+      }
+    })
   },
   
   reorderIndicatorRules: (panelId: string, startIndex: number, endIndex: number) => {
@@ -531,12 +748,14 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         return result
       }
       
+      const newPanels = state.panels.map(p =>
+        p.id === panelId && p.type === 'indicator'
+          ? { ...p, rules: reorder(p.rules) }
+          : p
+      )
+      
       return {
-        panels: state.panels.map(p =>
-          p.id === panelId && p.type === 'indicator'
-            ? { ...p, rules: reorder(p.rules) }
-            : p
-        ),
+        panels: newPanels,
         indicatorPanels: state.indicatorPanels.map(p =>
           p.id === panelId
             ? { ...p, rules: reorder(p.rules) }
@@ -548,35 +767,51 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   
   // Raw topic viewer panel specific
   addRawTopicViewerPanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
     const defaultTopic = get().metadata?.topics[0]?.name || ''
     const newPanel: RawTopicViewerPanelConfig = {
       id: `panel-${Date.now()}-${Math.random()}`,
       type: 'raw-topic-viewer',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white',
       topic: defaultTopic,
       maxMessageLength: 5000,
       prettyPrint: true,
       showTimestamp: true
     }
     
-    set((state) => ({
-      panels: [...state.panels, newPanel],
-      rawTopicViewerPanels: [...state.rawTopicViewerPanels, newPanel]
-    }))
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        rawTopicViewerPanels: [...state.rawTopicViewerPanels, newPanel]
+      }
+    })
   },
   
   updateRawTopicViewerPanel: (panelId: string, config: Partial<RawTopicViewerPanelConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'raw-topic-viewer' ? { ...p, ...config } as RawTopicViewerPanelConfig : p
-      ),
-      rawTopicViewerPanels: state.rawTopicViewerPanels.map(p =>
-        p.id === panelId ? { ...p, ...config } as RawTopicViewerPanelConfig : p
       )
-    }))
+      return {
+        panels: newPanels,
+        rawTopicViewerPanels: state.rawTopicViewerPanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as RawTopicViewerPanelConfig : p
+        )
+      }
+    })
   },
   
   // Diagnostics panel specific
   addDiagnosticsPanel: () => {
+    const state = get()
+    if (!state.activePageId) return
+
     const defaultTopic = get().metadata?.topics.find(t => 
       t.name.includes('diagnostics')
     )?.name || get().metadata?.topics[0]?.name || '/diagnostics'
@@ -584,6 +819,10 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
     const newPanel: DiagnosticsPanelConfig = {
       id: `panel-${Date.now()}-${Math.random()}`,
       type: 'diagnostics',
+      pageId: state.activePageId,
+      colspan: 1,
+      rowspan: 12,
+      color: 'bg-white',
       topic: defaultTopic,
       minLevel: 0,
       searchFilter: '',
@@ -592,21 +831,27 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       pinnedDiagnostics: []
     }
     
-    set((state) => ({
-      panels: [...state.panels, newPanel],
-      diagnosticsPanels: [...state.diagnosticsPanels, newPanel]
-    }))
+    set((state) => {
+      const newPanels = [...state.panels, newPanel]
+      return {
+        panels: newPanels,
+        diagnosticsPanels: [...state.diagnosticsPanels, newPanel]
+      }
+    })
   },
   
   updateDiagnosticsPanel: (panelId: string, config: Partial<DiagnosticsPanelConfig>) => {
-    set((state) => ({
-      panels: state.panels.map(p =>
+    set((state) => {
+      const newPanels = state.panels.map(p =>
         p.id === panelId && p.type === 'diagnostics' ? { ...p, ...config } as DiagnosticsPanelConfig : p
-      ),
-      diagnosticsPanels: state.diagnosticsPanels.map(p =>
-        p.id === panelId ? { ...p, ...config } as DiagnosticsPanelConfig : p
       )
-    }))
+      return {
+        panels: newPanels,
+        diagnosticsPanels: state.diagnosticsPanels.map(p =>
+          p.id === panelId ? { ...p, ...config } as DiagnosticsPanelConfig : p
+        )
+      }
+    })
   },
   
   togglePinnedDiagnostic: (panelId: string, diagnosticName: string) => {
@@ -619,12 +864,14 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
         ? panel.pinnedDiagnostics.filter(name => name !== diagnosticName)
         : [...panel.pinnedDiagnostics, diagnosticName]
       
+      const newPanels = state.panels.map(p =>
+        p.id === panelId && p.type === 'diagnostics'
+          ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
+          : p
+      )
+      
       return {
-        panels: state.panels.map(p =>
-          p.id === panelId && p.type === 'diagnostics'
-            ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
-            : p
-        ),
+        panels: newPanels,
         diagnosticsPanels: state.diagnosticsPanels.map(p =>
           p.id === panelId
             ? { ...p, pinnedDiagnostics: newPinnedDiagnostics }
