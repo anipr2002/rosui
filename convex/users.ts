@@ -19,9 +19,15 @@ export const upsertFromClerk = internalMutation({
 
     const user = await userByExternalId(ctx, data.id);
     if (user === null) {
-      await ctx.db.insert("users", userAttributes);
+      // New user - initialize with free tier and zero storage
+      await ctx.db.insert("users", {
+        ...userAttributes,
+        subscriptionTier: "free" as const,
+        storageUsedBytes: 0,
+      });
     } else {
-      await ctx.db.patch(user._id, userAttributes);
+      // Existing user - only update name
+      await ctx.db.patch(user._id, { name: userAttributes.name });
     }
   },
 });
@@ -61,3 +67,62 @@ async function userByExternalId(ctx: QueryCtx, externalId: string) {
     .withIndex("byExternalId", (q) => q.eq("externalId", externalId))
     .unique();
 }
+
+// Storage quota utilities
+const STORAGE_QUOTAS = {
+  free: 0, // No storage for free users
+  pro: 50 * 1024 * 1024 * 1024, // 50GB in bytes
+  team: 500 * 1024 * 1024 * 1024, // 500GB in bytes
+};
+
+export const getUserStorageInfo = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    
+    const quota = STORAGE_QUOTAS[user.subscriptionTier];
+    const used = user.storageUsedBytes;
+    const remaining = quota - used;
+    const percentageUsed = quota > 0 ? (used / quota) * 100 : 0;
+
+    return {
+      tier: user.subscriptionTier,
+      quota,
+      used,
+      remaining,
+      percentageUsed,
+      canUpload: remaining > 0,
+    };
+  },
+});
+
+export const canUploadFile = query({
+  args: { fileSize: v.number() },
+  handler: async (ctx, { fileSize }) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    
+    // Free users cannot upload
+    if (user.subscriptionTier === "free") {
+      return {
+        canUpload: false,
+        reason: "Free tier does not have storage access. Please upgrade to Pro or Team.",
+      };
+    }
+
+    const quota = STORAGE_QUOTAS[user.subscriptionTier];
+    const used = user.storageUsedBytes;
+    const remaining = quota - used;
+
+    if (fileSize > remaining) {
+      return {
+        canUpload: false,
+        reason: `Insufficient storage. File size: ${(fileSize / 1024 / 1024).toFixed(2)}MB, Available: ${(remaining / 1024 / 1024).toFixed(2)}MB`,
+      };
+    }
+
+    return {
+      canUpload: true,
+      reason: null,
+    };
+  },
+});

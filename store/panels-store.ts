@@ -7,6 +7,7 @@ import {
   type McapMetadata,
   type McapTopic
 } from '@/lib/rosbag/mcap-reader'
+import { rosbagCacheDB } from '@/lib/db/rosbag-cache-db'
 
 export interface SeriesConfig {
   id: string
@@ -106,6 +107,7 @@ interface PanelsState {
   messages: McapMessage[] | null
   isLoading: boolean
   error: string | null
+  currentS3Key: string | null // Track S3 key for cleanup
   
   // Playback state
   currentTime: bigint
@@ -127,6 +129,7 @@ interface PanelsState {
   
   // Actions
   loadFile: (file: File) => Promise<void>
+  loadFileFromUrl: (url: string, fileName: string, s3Key: string) => Promise<void>
   clearFile: () => void
   setCurrentTime: (time: bigint) => void
   play: () => void
@@ -195,6 +198,7 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
   messages: null,
   isLoading: false,
   error: null,
+  currentS3Key: null,
   
   currentTime: 0n,
   isPlaying: false,
@@ -255,10 +259,94 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       throw error
     }
   },
+
+  // Load MCAP file from URL (S3)
+  loadFileFromUrl: async (url: string, fileName: string, s3Key: string) => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      let file: File
+      
+      // Check if file is already cached
+      const cached = await rosbagCacheDB.getCachedFile(s3Key)
+      
+      if (cached) {
+        console.log('Using cached file:', fileName)
+        file = new File([cached.blob], fileName, { type: 'application/octet-stream' })
+      } else {
+        console.log('Downloading file from S3:', fileName)
+        
+        // Download file from S3
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error(`Failed to download file: ${response.statusText}`)
+        }
+        
+        const blob = await response.blob()
+        file = new File([blob], fileName, { type: 'application/octet-stream' })
+        
+        // Cache file if it's large (>50MB) - hybrid strategy
+        const CACHE_THRESHOLD = 50 * 1024 * 1024 // 50MB
+        if (blob.size > CACHE_THRESHOLD) {
+          console.log('Caching large file in IndexedDB:', fileName)
+          await rosbagCacheDB.cacheFile(s3Key, fileName, blob)
+        }
+      }
+      
+      // Parse the file
+      const result = await parseMcapFile(file, (progress) => {
+        console.log('MCAP parsing progress:', progress)
+      })
+      
+      // Create default page if none exists
+      const defaultPageId = `page-${Date.now()}`
+      const defaultPage: Page = {
+        id: defaultPageId,
+        name: 'Page 1',
+        layout: 'threeColumn',
+        createdAt: Date.now()
+      }
+
+      set({
+        file,
+        metadata: result.metadata,
+        messages: result.messages,
+        currentTime: result.metadata.startTime,
+        isLoading: false,
+        error: null,
+        pages: [defaultPage],
+        activePageId: defaultPageId,
+        panels: [], // Reset panels on new file load
+        currentS3Key: s3Key // Track for cleanup
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load file from URL'
+      set({
+        isLoading: false,
+        error: errorMessage,
+        file: null,
+        metadata: null,
+        messages: null,
+        pages: [],
+        activePageId: null,
+        panels: [],
+        currentS3Key: null
+      })
+      throw error
+    }
+  },
+
   
   clearFile: () => {
-    const { pause } = get()
+    const { pause, currentS3Key } = get()
     pause()
+    
+    // Clean up cached file if it exists
+    if (currentS3Key) {
+      rosbagCacheDB.removeCachedFile(currentS3Key).catch((error) => {
+        console.error('Failed to remove cached file:', error)
+      })
+    }
     
     set({
       file: null,
@@ -269,7 +357,8 @@ export const usePanelsStore = create<PanelsState>((set, get) => ({
       error: null,
       panels: [],
       pages: [],
-      activePageId: null
+      activePageId: null,
+      currentS3Key: null
     })
   },
   

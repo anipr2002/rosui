@@ -92,6 +92,10 @@ const sidebarData = {
       icon: BookOpen,
       items: [
         {
+          title: "Bag Library",
+          url: "/dashboard/rosbag/bag-library",
+        },
+        {
           title: "Record",
           url: "/dashboard/rosbag/record",
         },

@@ -3,8 +3,6 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { WebhookEvent } from "@clerk/backend";
 import { Webhook } from "svix";
-import { transformWebhookData } from "./paymentAttemptTypes";
-
 const http = httpRouter();
 
 http.route({
@@ -26,14 +24,6 @@ http.route({
       case "user.deleted": {
         const clerkUserId = (event.data as any).id!;
         await ctx.runMutation(internal.users.deleteFromClerk, { clerkUserId });
-        break;
-      }
-
-      case "paymentAttempt.updated": {
-        const paymentAttemptData = transformWebhookData((event as any).data);
-        await ctx.runMutation(internal.paymentAttempts.savePaymentAttempt, {
-          paymentAttemptData,
-        });
         break;
       }
 

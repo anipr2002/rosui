@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { usePanelsStore } from "@/store/panels-store";
 import {
   FileUpload,
@@ -16,6 +19,8 @@ import {
   Lightbulb,
   FileText,
   Activity,
+  FileArchive,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,6 +42,7 @@ import { PageTabs } from "@/components/dashboard/rosbag/layouts/page-tabs";
 import { LAYOUTS } from "@/components/dashboard/rosbag/layouts/constants";
 
 export default function PanelsPage() {
+  const router = useRouter();
   const {
     file,
     metadata,
@@ -51,7 +57,11 @@ export default function PanelsPage() {
     removePanel,
     resizePanel,
     movePanel,
+    loadFileFromUrl,
+    isLoading: fileLoading,
   } = usePanelsStore();
+
+  const recentFiles = useQuery(api.rosbagFiles.listRecent, { limit: 5 });
 
   // Filter panels for current page
   const activePanels = useMemo(() => {
@@ -141,10 +151,49 @@ export default function PanelsPage() {
                 </div>
               </CardHeader>
               <CardContent className="px-6 py-4">
-                <div className="space-y-2 mt-4">
-                  <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
-                  <div className="h-8 bg-gray-100 rounded animate-pulse w-3/4"></div>
-                </div>
+                {recentFiles === undefined ? (
+                  <div className="space-y-2 mt-4">
+                    <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
+                    <div className="h-8 bg-gray-100 rounded animate-pulse w-3/4"></div>
+                  </div>
+                ) : recentFiles.length === 0 ? (
+                  <p className="text-sm text-gray-500 mt-4">No files uploaded yet</p>
+                ) : (
+                  <div className="space-y-2 mt-4">
+                    {recentFiles.map((file) => {
+                      const handleLoadFile = async () => {
+                        try {
+                          await loadFileFromUrl(file.s3Url, file.fileName, file.s3Key);
+                        } catch (error) {
+                          console.error("Failed to load file:", error);
+                        }
+                      };
+
+                      return (
+                        <button
+                          key={file._id}
+                          onClick={handleLoadFile}
+                          disabled={fileLoading}
+                          className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-blue-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {fileLoading ? (
+                            <Loader2 className="h-4 w-4 text-blue-600 flex-shrink-0 animate-spin" />
+                          ) : (
+                            <FileArchive className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {file.fileName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(file.uploadedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
