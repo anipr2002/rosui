@@ -188,7 +188,7 @@ export function LiveImagePanel({
     const buffer = dataArray.buffer.slice(
       dataArray.byteOffset,
       dataArray.byteOffset + dataArray.byteLength
-    )
+    ) as ArrayBuffer
 
     const workerManager = getPanelWorkerManager()
     workerManager.decodeRawImage(
