@@ -1,169 +1,205 @@
-# Performance Monitoring Utilities
+# Performance Optimization Guide
 
-This directory contains performance monitoring and debugging utilities for React components. These tools are **only active in development mode** and have zero impact on production builds.
+This document describes the performance optimization strategies used in the ROS UI dashboard, particularly for handling multiple simultaneous panel visualizations.
 
-## Available Tools
+## Architecture Overview
 
-### 1. `useRenderCount`
+The dashboard uses **panel-type-specific Web Workers** to offload heavy computations from the main thread, combined with **optimized React patterns** to prevent unnecessary re-renders.
 
-Tracks how many times a component renders.
-
-```tsx
-import { useRenderCount } from '@/lib/performance'
-
-function MyComponent() {
-  useRenderCount('MyComponent')
-  
-  return <div>My Component</div>
-}
+```
+Main Thread                          Worker Threads
+------------                         --------------
+[TopicStore] ----postMessage---->   [PlotWorker]     (data parsing, chart processing)
+     |                              [ImageWorker]    (raw decoding, transforms)
+     |                              [RawTopicWorker] (JSON formatting)
+     v
+[Panel Components] <--onmessage---- [Workers respond with processed data]
 ```
 
-### 2. `useWhyDidYouUpdate`
+## Panel Workers
 
-Logs which props changed between renders, helping identify unnecessary re-renders.
+Located in `lib/workers/panels/`:
 
+### 1. Plot Worker (`plot-worker.ts`)
+
+Handles chart data processing for plot panels:
+- Parses message paths from raw ROS messages
+- Maintains chart data history per panel
+- Assembles multi-series data points
+- Trims data to configured max points
+
+### 2. Image Worker (`image-worker.ts`)
+
+Handles raw image decoding for image panels:
+- Decodes raw ROS images (`sensor_msgs/Image`)
+- Applies color mapping for depth images (turbo, rainbow)
+- Applies transformations (flip, rotate)
+- Uses transferable ArrayBuffers to avoid copying
+
+**Note:** Compressed images (`sensor_msgs/CompressedImage`) are still decoded on main thread because they require DOM APIs (`Image()`, `canvas`).
+
+### 3. Raw Topic Worker (`raw-topic-worker.ts`)
+
+Handles JSON formatting for raw topic viewer panels:
+- Formats JSON messages with configurable pretty printing
+- Handles message truncation for large payloads
+- Maintains per-panel configuration
+
+### Panel Worker Manager (`panel-worker-manager.ts`)
+
+Singleton manager that:
+- Creates one worker per panel type (not per instance)
+- Routes messages to the correct worker
+- Manages worker lifecycle (init, terminate)
+- Provides clean API for panels
+
+## React Optimization Patterns
+
+### 1. Targeted Zustand Selectors
+
+**Before (re-renders on any subscriber change):**
 ```tsx
-import { useWhyDidYouUpdate } from '@/lib/performance'
-
-function MyComponent({ prop1, prop2, prop3 }) {
-  useWhyDidYouUpdate('MyComponent', { prop1, prop2, prop3 })
-  
-  return <div>My Component</div>
-}
+const { subscribers } = useTopicsStore()
 ```
 
-### 3. `ProfilerWrapper`
-
-Wraps components with React Profiler and logs render times.
-
+**After (re-renders only when specific data changes):**
 ```tsx
-import { ProfilerWrapper } from '@/lib/performance'
-
-<ProfilerWrapper id="MyExpensiveComponent">
-  <MyExpensiveComponent />
-</ProfilerWrapper>
+const topics = useTopicsStore((state) => state.topics)
+const subscribers = useTopicsStore((state) => state.subscribers)
 ```
 
-**Output:**
-- Warnings (⚠️) for renders > 16ms (missed frame at 60fps)
-- Info logs for renders > 5ms
-- Silent for fast renders < 5ms
+### 2. React.memo with Custom Comparison
 
-### 4. `PerformanceTracker`
-
-Tracks performance of specific operations.
+For components with complex props like image data:
 
 ```tsx
-import { PerformanceTracker } from '@/lib/performance'
-
-function processData() {
-  PerformanceTracker.mark('dataProcessing')
-  
-  // ... expensive operation ...
-  
-  PerformanceTracker.measure('Data Processing Complete', 'dataProcessing')
-}
-```
-
-## Performance Optimization Best Practices
-
-Based on the optimizations implemented in this codebase:
-
-### 1. Use React.memo with Custom Comparisons
-
-```tsx
-const MyComponent = React.memo(
-  ({ data, callback }) => {
-    // Component logic
-  },
+const ImageRenderer = React.memo(
+  ImageRendererComponent,
   (prevProps, nextProps) => {
-    // Return true if props are equal (skip re-render)
-    return prevProps.data === nextProps.data &&
-           prevProps.callback === nextProps.callback
+    // Sample pixels instead of comparing entire buffer
+    if (prevProps.image.width !== nextProps.image.width) return false
+    
+    const step = Math.floor(prevProps.image.data.length / 100)
+    for (let i = 0; i < prevProps.image.data.length; i += step) {
+      if (prevProps.image.data[i] !== nextProps.image.data[i]) return false
+    }
+    return true
   }
 )
 ```
 
-### 2. Stabilize References with useMemo/useCallback
+### 3. Stable References with useCallback/useMemo
 
 ```tsx
-const stableConfig = useMemo(() => {
-  const newConfig = computeConfig()
-  // Return same reference if nothing changed
-  if (JSON.stringify(prevConfig) === JSON.stringify(newConfig)) {
-    return prevConfig
+// Stabilize config reference to prevent recalculations
+const config = useMemo<LivePlotConfig>(() => {
+  const newConfig = (panel.config as LivePlotConfig) || {}
+  
+  // Return same reference if unchanged
+  if (JSON.stringify(prevConfig.current) === JSON.stringify(newConfig)) {
+    return prevConfig.current
   }
+  
+  prevConfig.current = newConfig
   return newConfig
-}, [dependencies])
+}, [panel.config])
 ```
 
-### 3. Use Zustand with Immer
+### 4. Message Deduplication
+
+Track last processed message to avoid redundant worker calls:
 
 ```tsx
-import { create } from 'zustand'
-import { immer } from 'zustand/middleware/immer'
-
-const useStore = create()(
-  immer((set) => ({
-    data: [],
-    update: (item) => set((state) => {
-      // Immer handles immutability
-      state.data.push(item)
-    })
-  }))
-)
-```
-
-### 4. Debounce Expensive Updates
-
-```tsx
-const debouncedValue = useDebounce(value, 300) // 300ms delay
+const lastMessageTimestampRef = useRef<number>(0)
 
 useEffect(() => {
-  // Only runs after user stops typing for 300ms
-  expensiveOperation(debouncedValue)
-}, [debouncedValue])
+  if (timestamp <= lastMessageTimestampRef.current) return
+  lastMessageTimestampRef.current = timestamp
+  
+  workerManager.processMessage(panelId, data, timestamp)
+}, [subscribers])
 ```
 
-### 5. Extract Heavy Components
+## Performance Best Practices
+
+### Do:
+
+1. **Use Web Workers for CPU-intensive tasks**
+   - Image decoding
+   - JSON stringification of large objects
+   - Data transformation and parsing
+
+2. **Use targeted Zustand selectors**
+   - Select only the state slices you need
+   - Components only re-render when their selected state changes
+
+3. **Use React.memo with custom comparators**
+   - For components with large/complex props
+   - Sample data instead of deep equality checks
+
+4. **Use transferable objects in workers**
+   - ArrayBuffers can be transferred without copying
+   - Use `postMessage(data, [data.buffer])` syntax
+
+5. **Debounce expensive operations**
+   - Config changes that trigger worker reconfiguration
+   - Transform state persistence
+
+### Don't:
+
+1. **Don't subscribe to entire Zustand store**
+   - Causes re-renders on any state change
+
+2. **Don't create inline objects/functions in render**
+   - Creates new references each render
+   - Defeats React.memo
+
+3. **Don't do heavy processing in useMemo/useEffect**
+   - Move to workers instead
+
+4. **Don't create worker per panel instance**
+   - Resource exhaustion with many panels
+   - One worker per panel type is sufficient
+
+## Debugging Performance
+
+### React DevTools Profiler
+
+1. Enable React DevTools
+2. Go to Profiler tab
+3. Record while interacting with panels
+4. Look for:
+   - Components re-rendering unnecessarily
+   - Long render times (>16ms)
+
+### Browser DevTools
+
+1. Performance tab - record timeline
+2. Look for:
+   - Long tasks blocking main thread
+   - Frequent garbage collection
+   - Worker message timing
+
+### Worker Debug Logging
+
+Enable in worker configuration:
 
 ```tsx
-// Bad: Chart re-renders with every parent render
-function Panel() {
-  return <HeavyChart data={data} />
-}
-
-// Good: Chart only re-renders when data actually changes
-const MemoizedChart = React.memo(HeavyChart)
-
-function Panel() {
-  return <MemoizedChart data={data} />
-}
+workerBridge.initialize({
+  debug: true,  // Logs message counts and timing
+})
 ```
 
-## Debugging Performance Issues
+## Files Reference
 
-1. **Enable profiling:**
-   - Run in development mode
-   - Open DevTools Console
-   - Look for `[Profiler]`, `[Render]`, or `[Performance]` logs
-
-2. **Identify problematic components:**
-   - Components rendering > 16ms will show warnings
-   - Use `useWhyDidYouUpdate` to see what props changed
-
-3. **Common issues:**
-   - **Inline object/array creation:** `style={{ margin: 10 }}` creates new object each render
-   - **Missing dependencies:** useCallback/useMemo without proper deps
-   - **Store updates:** Zustand subscribers re-rendering on every state change
-   - **Large lists:** Not using virtualization (react-window/react-virtual)
-
-## Performance Metrics
-
-The dashboard layout system has been optimized for:
-- **< 16ms** renders (60fps) for UI interactions
-- **< 100ms** for settings panel operations
-- **Minimal re-renders** when multiple plots are running simultaneously
-
-All optimizations maintain the same functionality while improving responsiveness.
-
+| File | Purpose |
+|------|---------|
+| `lib/workers/panels/panel-worker-types.ts` | TypeScript types for worker communication |
+| `lib/workers/panels/panel-worker-manager.ts` | Singleton worker lifecycle manager |
+| `lib/workers/panels/plot-worker.ts` | Chart data processing worker |
+| `lib/workers/panels/image-worker.ts` | Image decoding worker |
+| `lib/workers/panels/raw-topic-worker.ts` | JSON formatting worker |
+| `components/.../plot/live-plot-panel.tsx` | Optimized plot panel component |
+| `components/.../image/live-image-panel.tsx` | Optimized image panel component |
+| `components/.../raw-topic-viewer/live-raw-topic-viewer.tsx` | Optimized raw topic viewer |
+| `components/.../image/image-renderer.tsx` | Memoized image renderer |

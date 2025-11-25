@@ -4,6 +4,7 @@ import * as ROSLIB from "roslib";
 import { useRosStore } from "./ros-store";
 import { messageTypeParser } from "@/lib/ros/messageTypeParser";
 import { enableMapSet } from "immer";
+import { getWorkerBridge, resetWorkerBridge } from "@/lib/workers/worker-bridge";
 
 enableMapSet();
 
@@ -517,6 +518,43 @@ export const useTopicsStore = create<TopicsState>()(
       }
 
       try {
+        // Initialize worker bridge if not already initialized
+        const workerBridge = getWorkerBridge();
+        if (!workerBridge.initialized) {
+          workerBridge.initialize({
+            maxMessagesPerTopic: 50,
+            throttleInterval: 16, // 60fps
+            debug: false,
+          });
+
+          // Set up worker message update callback
+          workerBridge.onMessageUpdate(
+            (topicName, messages, latestMessage) => {
+              set((state) => {
+                const sub = state.subscribers.get(topicName);
+                if (!sub) return;
+
+                state.subscribers.set(topicName, {
+                  ...sub,
+                  messages,
+                  latestMessage,
+                });
+              });
+            }
+          );
+
+          // Set up error callback
+          workerBridge.onError((error, topicName) => {
+            console.error(
+              `[TopicStore] Worker error for ${topicName}:`,
+              error
+            );
+          });
+        }
+
+        // Register topic with worker
+        workerBridge.subscribe(topicName, messageType);
+
         const topic = new ROSLIB.Topic({
           ros,
           name: topicName,
@@ -532,26 +570,11 @@ export const useTopicsStore = create<TopicsState>()(
           latestMessage: null,
         };
 
-        // Subscribe to messages
+        // Subscribe to messages and forward to worker
         topic.subscribe((message: any) => {
-          set((state) => {
-            const sub = state.subscribers.get(topicName);
-            if (!sub) return;
-
-            const messageRecord: MessageRecord = {
-              data: message,
-              timestamp: Date.now(),
-            };
-
-            // Keep only last 50 messages - Immer handles immutability
-            const newMessages = [messageRecord, ...sub.messages].slice(0, 50);
-
-            state.subscribers.set(topicName, {
-              ...sub,
-              messages: newMessages,
-              latestMessage: message,
-            });
-          });
+          const timestamp = Date.now();
+          // Forward message to worker for processing
+          workerBridge.processMessage(topicName, message, timestamp);
         });
 
         set((state) => {
@@ -570,7 +593,14 @@ export const useTopicsStore = create<TopicsState>()(
 
       if (subscriber) {
         try {
+          // Unsubscribe from ROSLIB topic
           subscriber.topic.unsubscribe();
+
+          // Notify worker to unsubscribe
+          const workerBridge = getWorkerBridge();
+          if (workerBridge.initialized) {
+            workerBridge.unsubscribe(topicName);
+          }
 
           set((state) => {
             state.subscribers.delete(topicName);
@@ -595,6 +625,12 @@ export const useTopicsStore = create<TopicsState>()(
 
       if (subscriber) {
         try {
+          // Clear history in worker
+          const workerBridge = getWorkerBridge();
+          if (workerBridge.initialized) {
+            workerBridge.clearHistory(topicName);
+          }
+
           set((state) => {
             state.subscribers.set(topicName, {
               ...subscriber,
@@ -630,6 +666,9 @@ export const useTopicsStore = create<TopicsState>()(
         }
         publisher.topic.unadvertise();
       });
+
+      // Terminate worker
+      resetWorkerBridge();
 
       // Clear state
       set((state) => {

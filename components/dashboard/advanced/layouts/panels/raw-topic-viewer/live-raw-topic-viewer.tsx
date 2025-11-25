@@ -1,16 +1,17 @@
-"use client";
+"use client"
 
-import React, { useEffect, useMemo, useCallback, useRef } from "react";
-import { Trash2, FileText } from "lucide-react";
-import { useTopicsStore } from "@/store/topic-store";
-import { RawTopicSettings } from "./raw-topic-settings";
-import type { Panel } from "../../core/types";
-import type { RawTopicViewerConfig } from "./types";
+import React, { useEffect, useMemo, useCallback, useRef, useState } from "react"
+import { Trash2, FileText } from "lucide-react"
+import { useTopicsStore } from "@/store/topic-store"
+import { RawTopicSettings } from "./raw-topic-settings"
+import { getPanelWorkerManager } from "@/lib/workers/panels/panel-worker-manager"
+import type { Panel } from "../../core/types"
+import type { RawTopicViewerConfig } from "./types"
 
 interface LiveRawTopicViewerProps {
-  panel: Panel;
-  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void;
-  onDelete?: (id: string) => void;
+  panel: Panel
+  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void
+  onDelete?: (id: string) => void
 }
 
 export function LiveRawTopicViewer({
@@ -18,118 +19,142 @@ export function LiveRawTopicViewer({
   onUpdatePanel,
   onDelete,
 }: LiveRawTopicViewerProps) {
-  const { topics, subscribers, createSubscriber } = useTopicsStore();
-  const config = (panel.config as RawTopicViewerConfig) || {};
-  const startTimeRef = useRef<number | null>(null);
+  // Use targeted selectors to prevent unnecessary re-renders
+  const topics = useTopicsStore((state) => state.topics)
+  const subscribers = useTopicsStore((state) => state.subscribers)
+  const createSubscriber = useTopicsStore((state) => state.createSubscriber)
+
+  const config = (panel.config as RawTopicViewerConfig) || {}
+  const startTimeRef = useRef<number | null>(null)
+  
+  // Worker-processed data state
+  const [formattedMessage, setFormattedMessage] = useState<string | null>(null)
+  const [messageTimestamp, setMessageTimestamp] = useState<number | null>(null)
+
+  // Track if we've configured the worker and last processed message
+  const workerConfiguredRef = useRef(false)
+  const lastMessageTimestampRef = useRef<number>(0)
 
   // Get topic type
   const topicType = useMemo(() => {
-    if (!config.topic) return null;
-    const topic = topics.find((t) => t.name === config.topic);
-    return topic?.type || null;
-  }, [topics, config.topic]);
+    if (!config.topic) return null
+    const topic = topics.find((t) => t.name === config.topic)
+    return topic?.type || null
+  }, [topics, config.topic])
+
+  // Configure worker when panel or config changes
+  useEffect(() => {
+    if (!config.topic) return
+
+    const workerManager = getPanelWorkerManager()
+
+    workerManager.configureRawTopicPanel(
+      {
+        panelId: panel.id,
+        maxMessageLength: config.maxMessageLength || 10000,
+        prettyPrint: config.prettyPrint ?? true,
+      },
+      (panelId, formatted, timestamp) => {
+        if (panelId === panel.id) {
+          setFormattedMessage(formatted)
+          setMessageTimestamp(timestamp)
+        }
+      },
+      (panelId, error) => {
+        console.error(`[LiveRawTopicViewer] Worker error for ${panelId}:`, error)
+      }
+    )
+
+    workerConfiguredRef.current = true
+
+    return () => {
+      // Clean up worker state on unmount
+      workerManager.removeRawTopicPanel(panel.id)
+      workerConfiguredRef.current = false
+    }
+  }, [panel.id, config.topic, config.maxMessageLength, config.prettyPrint])
 
   // Subscribe to topic
   useEffect(() => {
-    if (!config.topic || !topicType) return;
+    if (!config.topic || !topicType) return
 
-    const existingSubscriber = subscribers.get(config.topic);
+    const existingSubscriber = subscribers.get(config.topic)
     if (!existingSubscriber) {
       try {
-        createSubscriber(config.topic, topicType);
+        createSubscriber(config.topic, topicType)
       } catch (error) {
-        console.error("Failed to subscribe:", error);
+        console.error("Failed to subscribe:", error)
       }
     }
-  }, [config.topic, topicType, createSubscriber, subscribers]);
+  }, [config.topic, topicType, createSubscriber, subscribers])
 
-  // Get latest message
-  const latestMessage = useMemo(() => {
-    if (!config.topic) return null;
+  // Forward messages to worker when they arrive
+  useEffect(() => {
+    if (!workerConfiguredRef.current || !config.topic) return
 
-    const subscriber = subscribers.get(config.topic);
-    if (!subscriber) return null;
+    const subscriber = subscribers.get(config.topic)
+    if (!subscriber) return
 
-    // Prefer messages array which has MessageRecord with timestamp
-    // If messages array is empty, fall back to latestMessage
+    // Get the latest message
+    let latestMessage = null
+    let timestamp = 0
+
     if (subscriber.messages && subscriber.messages.length > 0) {
-      return subscriber.messages[0]; // First item is most recent
-    }
-
-    // Fallback: latestMessage is raw message data, wrap it
-    if (subscriber.latestMessage) {
-      return {
+      latestMessage = subscriber.messages[0]
+      timestamp = latestMessage.timestamp
+    } else if (subscriber.latestMessage) {
+      latestMessage = {
         data: subscriber.latestMessage,
         timestamp: Date.now(),
-      };
+      }
+      timestamp = latestMessage.timestamp
     }
 
-    return null;
-  }, [config.topic, subscribers]);
+    if (!latestMessage) return
 
-  // Format the message for display
-  const formattedMessage = useMemo(() => {
-    if (!latestMessage) return null;
+    // Check if we've already processed this message
+    if (timestamp <= lastMessageTimestampRef.current) return
 
-    try {
-      // Safety check for undefined or null data
-      if (latestMessage.data === undefined || latestMessage.data === null) {
-        return "No message data available";
-      }
+    // Update last processed timestamp
+    lastMessageTimestampRef.current = timestamp
 
-      const prettyPrint = config.prettyPrint ?? true;
-      const maxLength = config.maxMessageLength || 10000;
-
-      let jsonString = JSON.stringify(
-        latestMessage.data,
-        null,
-        prettyPrint ? 2 : 0
-      );
-
-      // Apply max length truncation
-      if (jsonString && jsonString.length > maxLength) {
-        jsonString = jsonString.slice(0, maxLength) + "\n... (truncated)";
-      }
-
-      return jsonString;
-    } catch (error) {
-      return (
-        "Error formatting message: " +
-        (error instanceof Error ? error.message : "Unknown error")
-      );
-    }
-  }, [latestMessage, config.prettyPrint, config.maxMessageLength]);
+    // Forward to worker for processing
+    const workerManager = getPanelWorkerManager()
+    workerManager.formatRawTopicMessage(panel.id, latestMessage.data, timestamp)
+  }, [panel.id, config.topic, subscribers])
 
   // Format timestamp (relative to first message)
   const formattedTimestamp = useMemo(() => {
-    if (!latestMessage) return null;
+    if (messageTimestamp === null) return null
 
     // Initialize start time on first message
     if (startTimeRef.current === null) {
-      startTimeRef.current = latestMessage.timestamp;
+      startTimeRef.current = messageTimestamp
     }
 
-    const relativeTime =
-      (latestMessage.timestamp - (startTimeRef.current ?? latestMessage.timestamp)) / 1000;
-    return `${relativeTime.toFixed(3)}s`;
-  }, [latestMessage]);
+    const relativeTime = (messageTimestamp - (startTimeRef.current ?? messageTimestamp)) / 1000
+    return `${relativeTime.toFixed(3)}s`
+  }, [messageTimestamp])
 
   const handleConfigChange = useCallback(
     (newConfig: RawTopicViewerConfig) => {
       // Reset start time if topic changed
       if (newConfig.topic !== config.topic) {
-        startTimeRef.current = null;
+        startTimeRef.current = null
+        lastMessageTimestampRef.current = 0
+        setFormattedMessage(null)
+        setMessageTimestamp(null)
       }
-      onUpdatePanel(panel.id, { config: newConfig });
+      onUpdatePanel(panel.id, { config: newConfig })
     },
     [panel.id, config.topic, onUpdatePanel]
-  );
+  )
 
   const handleDelete = useCallback(() => {
     if (onDelete) {
-      onDelete(panel.id);
+      onDelete(panel.id)
     }
-  }, [onDelete, panel.id]);
+  }, [onDelete, panel.id])
 
   // Empty state when no topic selected
   if (!config.topic) {
@@ -160,11 +185,11 @@ export function LiveRawTopicViewer({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Empty state when waiting for data
-  if (!latestMessage) {
+  if (!formattedMessage) {
     return (
       <div className="relative h-full w-full group">
         <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
@@ -190,7 +215,7 @@ export function LiveRawTopicViewer({
           <div className="text-xs text-gray-500 font-mono">{config.topic}</div>
         </div>
       </div>
-    );
+    )
   }
 
   // Main view with message data
@@ -234,5 +259,5 @@ export function LiveRawTopicViewer({
         </div>
       </div>
     </div>
-  );
+  )
 }

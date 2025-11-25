@@ -1,12 +1,12 @@
-"use client";
+"use client"
 
-import React, { useEffect, useMemo, useCallback, useRef } from "react";
-import { Trash2, StopCircle } from "lucide-react";
-import { useTopicsStore } from "@/store/topic-store";
-import { parseNumericPath } from "@/lib/rosbag/message-path-parser";
-import { PlotSettings } from "./plot-settings";
-import type { Panel } from "../../core/types";
-import type { LivePlotConfig, PlotDataPoint, PlotSeries } from "./types";
+import React, { useEffect, useMemo, useCallback, useRef, useState } from "react"
+import { Trash2, StopCircle } from "lucide-react"
+import { useTopicsStore } from "@/store/topic-store"
+import { PlotSettings } from "./plot-settings"
+import { getPanelWorkerManager } from "@/lib/workers/panels/panel-worker-manager"
+import type { Panel } from "../../core/types"
+import type { LivePlotConfig, PlotDataPoint, PlotSeries } from "./types"
 import {
   LineChart,
   Line,
@@ -16,12 +16,12 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
+} from "recharts"
 
 // Memoized chart component to prevent unnecessary re-renders
 const PlotChart = React.memo<{
-  chartData: PlotDataPoint[];
-  activeSeries: PlotSeries[];
+  chartData: PlotDataPoint[]
+  activeSeries: PlotSeries[]
 }>(
   ({ chartData, activeSeries }) => {
     return (
@@ -61,8 +61,8 @@ const PlotChart = React.memo<{
               padding: "4px 8px",
             }}
             formatter={(value: any, name: string) => {
-              const series = activeSeries.find((s) => s.id === name);
-              return [value.toFixed(4), series?.label || name];
+              const series = activeSeries.find((s) => s.id === name)
+              return [value.toFixed(4), series?.label || name]
             }}
             labelFormatter={(value) => `Time: ${value.toFixed(2)}s`}
           />
@@ -70,8 +70,8 @@ const PlotChart = React.memo<{
             <Legend
               wrapperStyle={{ fontSize: "10px" }}
               formatter={(value) => {
-                const series = activeSeries.find((s) => s.id === value);
-                return series?.label || value;
+                const series = activeSeries.find((s) => s.id === value)
+                return series?.label || value
               }}
             />
           )}
@@ -90,44 +90,44 @@ const PlotChart = React.memo<{
           ))}
         </LineChart>
       </ResponsiveContainer>
-    );
+    )
   },
   (prevProps, nextProps) => {
     // Custom comparison to prevent re-renders when data hasn't changed
     if (prevProps.chartData.length !== nextProps.chartData.length) {
-      return false;
+      return false
     }
     if (prevProps.activeSeries.length !== nextProps.activeSeries.length) {
-      return false;
+      return false
     }
     // Compare series configuration
     for (let i = 0; i < prevProps.activeSeries.length; i++) {
-      const prevSeries = prevProps.activeSeries[i];
-      const nextSeries = nextProps.activeSeries[i];
+      const prevSeries = prevProps.activeSeries[i]
+      const nextSeries = nextProps.activeSeries[i]
       if (
         prevSeries.id !== nextSeries.id ||
         prevSeries.color !== nextSeries.color ||
         prevSeries.label !== nextSeries.label
       ) {
-        return false;
+        return false
       }
     }
     // Only re-render if last data point changed (new data arrived)
     if (prevProps.chartData.length > 0 && nextProps.chartData.length > 0) {
-      const prevLast = prevProps.chartData[prevProps.chartData.length - 1];
-      const nextLast = nextProps.chartData[nextProps.chartData.length - 1];
-      return prevLast.timestamp === nextLast.timestamp;
+      const prevLast = prevProps.chartData[prevProps.chartData.length - 1]
+      const nextLast = nextProps.chartData[nextProps.chartData.length - 1]
+      return prevLast.timestamp === nextLast.timestamp
     }
-    return true;
+    return true
   }
-);
+)
 
-PlotChart.displayName = "PlotChart";
+PlotChart.displayName = "PlotChart"
 
 interface LivePlotPanelProps {
-  panel: Panel;
-  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void;
-  onDelete?: (id: string) => void;
+  panel: Panel
+  onUpdatePanel: (panelId: string, updates: Partial<Panel>) => void
+  onDelete?: (id: string) => void
 }
 
 export function LivePlotPanel({
@@ -135,37 +135,46 @@ export function LivePlotPanel({
   onUpdatePanel,
   onDelete,
 }: LivePlotPanelProps) {
-  const { topics, subscribers, createSubscriber, removeSubscriber } =
-    useTopicsStore();
+  // Use targeted selectors to prevent unnecessary re-renders
+  const topics = useTopicsStore((state) => state.topics)
+  const subscribers = useTopicsStore((state) => state.subscribers)
+  const createSubscriber = useTopicsStore((state) => state.createSubscriber)
+  const removeSubscriber = useTopicsStore((state) => state.removeSubscriber)
+
+  // Worker-processed data state
+  const [chartData, setChartData] = useState<PlotDataPoint[]>([])
+  const [workerActiveSeries, setWorkerActiveSeries] = useState<PlotSeries[]>([])
+
+  // Track if we've configured the worker
+  const workerConfiguredRef = useRef(false)
+  const lastMessageTimestampsRef = useRef<Map<string, number>>(new Map())
 
   // Use stable config reference to prevent unnecessary recalculations
   const configRef = useRef<LivePlotConfig>(
     (panel.config as LivePlotConfig) || {}
-  );
+  )
 
   // Only update config ref if it actually changed (deep comparison for series)
   const config = useMemo<LivePlotConfig>(() => {
-    const newConfig = (panel.config as LivePlotConfig) || {};
-    const prevConfig = configRef.current;
+    const newConfig = (panel.config as LivePlotConfig) || {}
+    const prevConfig = configRef.current
 
     // Check if config actually changed
     if (
       JSON.stringify(prevConfig.series) === JSON.stringify(newConfig.series) &&
       prevConfig.maxDataPoints === newConfig.maxDataPoints
     ) {
-      return prevConfig; // Return same reference if unchanged
+      return prevConfig // Return same reference if unchanged
     }
 
-    configRef.current = newConfig;
-    return newConfig;
-  }, [panel.config]);
-
-  const startTimeRef = useRef<number | null>(null);
+    configRef.current = newConfig
+    return newConfig
+  }, [panel.config])
 
   // Migrate legacy single-series config to multi-series
   const activeSeries = useMemo(() => {
     if (config.series && config.series.length > 0) {
-      return config.series.filter((s) => s.enabled);
+      return config.series.filter((s) => s.enabled)
     }
     // Legacy support: convert old config to series format
     if (config.topic && config.messagePath) {
@@ -178,166 +187,148 @@ export function LivePlotPanel({
           color: config.lineColor || "#3b82f6",
           enabled: true,
         },
-      ];
+      ]
     }
-    return [];
-  }, [config.series, config.topic, config.messagePath, config.lineColor]);
+    return []
+  }, [config.series, config.topic, config.messagePath, config.lineColor])
 
   // Get all unique topics from active series
   const activeTopics = useMemo(() => {
-    return [...new Set(activeSeries.map((s) => s.topic))];
-  }, [activeSeries]);
+    return [...new Set(activeSeries.map((s) => s.topic))]
+  }, [activeSeries])
+
+  // Configure worker when panel or series config changes
+  useEffect(() => {
+    if (activeSeries.length === 0) return
+
+    const workerManager = getPanelWorkerManager()
+
+    workerManager.configurePlotPanel(
+      {
+        panelId: panel.id,
+        series: activeSeries,
+        maxDataPoints: config.maxDataPoints || 100,
+      },
+      (panelId, data, series) => {
+        if (panelId === panel.id) {
+          setChartData(data)
+          setWorkerActiveSeries(series)
+        }
+      },
+      (panelId, error) => {
+        console.error(`[LivePlotPanel] Worker error for ${panelId}:`, error)
+      }
+    )
+
+    workerConfiguredRef.current = true
+
+    return () => {
+      // Clean up worker state on unmount
+      workerManager.removePlotPanel(panel.id)
+      workerConfiguredRef.current = false
+    }
+  }, [panel.id, activeSeries, config.maxDataPoints])
 
   // Subscribe to all active topics
-  // Note: Primary subscription management is now handled by usePageSubscriptions hook
-  // This effect ensures subscriptions exist for panels on the active page
   useEffect(() => {
     activeTopics.forEach((topicName) => {
-      const topic = topics.find((t) => t.name === topicName);
-      if (!topic) return;
+      const topic = topics.find((t) => t.name === topicName)
+      if (!topic) return
 
-      const existingSubscriber = subscribers.get(topicName);
+      const existingSubscriber = subscribers.get(topicName)
       if (!existingSubscriber) {
         try {
-          createSubscriber(topicName, topic.type);
+          createSubscriber(topicName, topic.type)
         } catch (error) {
-          console.error("Failed to subscribe to topic:", error);
+          console.error("Failed to subscribe to topic:", error)
         }
       }
-    });
+    })
+  }, [activeTopics, topics, createSubscriber, subscribers])
 
-    // Cleanup: don't unsubscribe here - managed by usePageSubscriptions hook
-    // This prevents race conditions when switching pages
-  }, [activeTopics, topics, createSubscriber, subscribers]);
+  // Forward messages to worker when they arrive
+  useEffect(() => {
+    if (!workerConfiguredRef.current) return
 
-  // Track subscriber message counts to optimize re-renders
-  const subscriberMessageCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const workerManager = getPanelWorkerManager()
+
+    // Process messages for each active series
     activeSeries.forEach((series) => {
-      const subscriber = subscribers.get(series.topic);
-      counts[series.topic] = subscriber?.messages.length || 0;
-    });
-    return counts;
-  }, [activeSeries, subscribers]);
+      const subscriber = subscribers.get(series.topic)
+      if (!subscriber || !subscriber.messages || subscriber.messages.length === 0) return
 
-  // Process messages into chart data for multiple series
-  const chartData = useMemo(() => {
-    if (activeSeries.length === 0) {
-      return [];
-    }
+      // Get the latest message
+      const latestMessage = subscriber.messages[0]
+      if (!latestMessage) return
 
-    const maxPoints = config.maxDataPoints || 100;
-    const timestampMap = new Map<number, PlotDataPoint>();
+      // Check if we've already processed this message
+      const lastTimestamp = lastMessageTimestampsRef.current.get(series.id) || 0
+      if (latestMessage.timestamp <= lastTimestamp) return
 
-    // Process each series
-    activeSeries.forEach((series) => {
-      const subscriber = subscribers.get(series.topic);
-      if (
-        !subscriber ||
-        !subscriber.messages ||
-        subscriber.messages.length === 0
-      ) {
-        return;
-      }
+      // Update last processed timestamp
+      lastMessageTimestampsRef.current.set(series.id, latestMessage.timestamp)
 
-      // Process messages (they're already in reverse chronological order)
-      const messagesToProcess = subscriber.messages
-        .slice(0, maxPoints)
-        .reverse();
-
-      for (const messageRecord of messagesToProcess) {
-        try {
-          const value = parseNumericPath(
-            messageRecord.data,
-            series.messagePath
-          );
-
-          if (value !== null) {
-            // Initialize start time on first valid value
-            if (startTimeRef.current === null) {
-              startTimeRef.current = messageRecord.timestamp;
-            }
-
-            // Calculate relative timestamp in seconds
-            const relativeTime =
-              (messageRecord.timestamp - startTimeRef.current) / 1000;
-
-            // Get or create data point for this timestamp
-            if (!timestampMap.has(messageRecord.timestamp)) {
-              timestampMap.set(messageRecord.timestamp, {
-                timestamp: relativeTime,
-              });
-            }
-
-            const dataPoint = timestampMap.get(messageRecord.timestamp)!;
-            dataPoint[series.id] = value;
-          }
-        } catch (error) {
-          console.error("Error parsing message:", error);
-        }
-      }
-    });
-
-    // Convert map to sorted array and filter to only include active series
-    const activeSeriesIds = new Set(activeSeries.map((s) => s.id));
-    return Array.from(timestampMap.values())
-      .map((dataPoint) => {
-        // Only keep timestamp and data for active series
-        const filteredPoint: PlotDataPoint = { timestamp: dataPoint.timestamp };
-        Object.keys(dataPoint).forEach((key) => {
-          if (key === "timestamp" || activeSeriesIds.has(key)) {
-            filteredPoint[key] = dataPoint[key];
-          }
-        });
-        return filteredPoint;
-      })
-      .sort((a, b) => a.timestamp - b.timestamp);
-  }, [activeSeries, config.maxDataPoints, subscriberMessageCounts]);
+      // Forward to worker for processing
+      workerManager.processPlotMessage(
+        panel.id,
+        series.id,
+        latestMessage.data,
+        latestMessage.timestamp
+      )
+    })
+  }, [panel.id, activeSeries, subscribers])
 
   const handleConfigChange = useCallback(
     (newConfig: LivePlotConfig) => {
-      // If topics changed significantly, reset start time
+      // If topics changed significantly, clear worker data
       const oldTopics = activeSeries
         .map((s) => s.topic)
         .sort()
-        .join(",");
+        .join(",")
       const newTopics =
         newConfig.series
           ?.filter((s) => s.enabled)
           .map((s) => s.topic)
           .sort()
-          .join(",") || "";
+          .join(",") || ""
 
       if (oldTopics !== newTopics) {
-        startTimeRef.current = null;
+        const workerManager = getPanelWorkerManager()
+        workerManager.clearPlotData(panel.id)
+        lastMessageTimestampsRef.current.clear()
       }
 
       onUpdatePanel(panel.id, {
         config: newConfig,
-      });
+      })
     },
     [panel.id, activeSeries, onUpdatePanel]
-  );
+  )
 
   const handleStop = useCallback(() => {
-    // Reset the start time to clear the plot data
-    startTimeRef.current = null;
+    // Clear worker data
+    const workerManager = getPanelWorkerManager()
+    workerManager.clearPlotData(panel.id)
+    lastMessageTimestampsRef.current.clear()
 
     // Unsubscribe from all active topics to stop receiving data
     activeTopics.forEach((topicName) => {
       try {
-        removeSubscriber(topicName);
+        removeSubscriber(topicName)
       } catch (error) {
-        console.error("Failed to unsubscribe from topic:", error);
+        console.error("Failed to unsubscribe from topic:", error)
       }
-    });
-  }, [activeTopics, removeSubscriber]);
+    })
+  }, [panel.id, activeTopics, removeSubscriber])
 
   const handleDelete = useCallback(() => {
     if (onDelete) {
-      onDelete(panel.id);
+      onDelete(panel.id)
     }
-  }, [onDelete, panel.id]);
+  }, [onDelete, panel.id])
+
+  // Use worker-provided series or fall back to local
+  const displaySeries = workerActiveSeries.length > 0 ? workerActiveSeries : activeSeries
 
   // Empty state when no configuration
   if (activeSeries.length === 0) {
@@ -364,7 +355,7 @@ export function LivePlotPanel({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Empty state when no data
@@ -395,7 +386,7 @@ export function LivePlotPanel({
             Waiting for data...
           </div>
           <div className="text-xs text-gray-500">
-            {activeSeries.map((s) => (
+            {displaySeries.map((s) => (
               <div key={s.id}>
                 {s.label}: {s.topic} {s.messagePath}
               </div>
@@ -403,7 +394,7 @@ export function LivePlotPanel({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -428,8 +419,8 @@ export function LivePlotPanel({
         )}
       </div>
       <div className="h-full w-full p-2">
-        <PlotChart chartData={chartData} activeSeries={activeSeries} />
+        <PlotChart chartData={chartData} activeSeries={displaySeries} />
       </div>
     </div>
-  );
+  )
 }
