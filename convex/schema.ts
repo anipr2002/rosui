@@ -16,6 +16,12 @@ export default defineSchema({
     organizationId: v.optional(v.id("organizations")),
     // Storage used in bytes
     storageUsedBytes: v.number(),
+    // Layout count (free: 1, pro: 10, team: unlimited) - optional for existing users
+    layoutCount: v.optional(v.number()),
+    // Workflow count for current period (free: 5, pro: 50/month, team: unlimited) - optional for existing users
+    workflowCount: v.optional(v.number()),
+    // Timestamp when workflow count resets (monthly) - optional for existing users
+    workflowResetAt: v.optional(v.number()),
   })
     .index("byExternalId", ["externalId"])
     .index("byOrganization", ["organizationId"]),

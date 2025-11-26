@@ -20,10 +20,15 @@ export interface TFTransform {
   isStatic: boolean
 }
 
+// Store recent timestamps for update rate calculation
+const MAX_RATE_SAMPLES = 20
+const RATE_WINDOW_MS = 5000 // 5 second window for rate calculation
+
 interface TFState {
   // TF data
   tfTree: Map<string, TFTransform>
   lastUpdate: Map<string, number>
+  updateTimestamps: Map<string, number[]> // For calculating update rates
   isSubscribed: boolean
   isLoading: boolean
   
@@ -37,6 +42,9 @@ interface TFState {
   clearStaleTransforms: () => void
   getTFTree: () => Map<string, TFTransform>
   setStaleTimeout: (timeout: number) => void
+  getUpdateRate: (frameKey: string) => number
+  getAllUpdateRates: () => Map<string, number>
+  exportTreeAsJSON: () => string
 }
 
 // Internal references to topics
@@ -47,6 +55,7 @@ let staleCheckInterval: NodeJS.Timeout | null = null
 export const useTFStore = create<TFState>((set, get) => ({
   tfTree: new Map(),
   lastUpdate: new Map(),
+  updateTimestamps: new Map(),
   isSubscribed: false,
   isLoading: false,
   staleTimeout: 10000, // 10 seconds default
@@ -165,6 +174,7 @@ export const useTFStore = create<TFState>((set, get) => ({
       set({
         tfTree: new Map(),
         lastUpdate: new Map(),
+        updateTimestamps: new Map(),
         isSubscribed: false
       })
 
@@ -175,25 +185,37 @@ export const useTFStore = create<TFState>((set, get) => ({
   },
 
   updateTransform: (transform: TFTransform) => {
-    const { tfTree, lastUpdate } = get()
+    const { tfTree, lastUpdate, updateTimestamps } = get()
     const key = `${transform.parent}->${transform.child}`
+    const now = transform.timestamp
 
     const newTfTree = new Map(tfTree)
     const newLastUpdate = new Map(lastUpdate)
+    const newUpdateTimestamps = new Map(updateTimestamps)
 
     newTfTree.set(key, transform)
-    newLastUpdate.set(key, transform.timestamp)
+    newLastUpdate.set(key, now)
 
-    set({ tfTree: newTfTree, lastUpdate: newLastUpdate })
+    // Track timestamps for rate calculation
+    const timestamps = newUpdateTimestamps.get(key) || []
+    timestamps.push(now)
+    
+    // Keep only recent timestamps within the rate window
+    const cutoff = now - RATE_WINDOW_MS
+    const filteredTimestamps = timestamps.filter(t => t > cutoff).slice(-MAX_RATE_SAMPLES)
+    newUpdateTimestamps.set(key, filteredTimestamps)
+
+    set({ tfTree: newTfTree, lastUpdate: newLastUpdate, updateTimestamps: newUpdateTimestamps })
   },
 
   clearStaleTransforms: () => {
-    const { tfTree, lastUpdate, staleTimeout } = get()
+    const { tfTree, lastUpdate, updateTimestamps, staleTimeout } = get()
     const now = Date.now()
     let hasChanges = false
 
     const newTfTree = new Map(tfTree)
     const newLastUpdate = new Map(lastUpdate)
+    const newUpdateTimestamps = new Map(updateTimestamps)
 
     // Remove transforms that haven't been updated and are not static
     tfTree.forEach((transform, key) => {
@@ -204,12 +226,13 @@ export const useTFStore = create<TFState>((set, get) => ({
       if (!transform.isStatic && age > staleTimeout) {
         newTfTree.delete(key)
         newLastUpdate.delete(key)
+        newUpdateTimestamps.delete(key)
         hasChanges = true
       }
     })
 
     if (hasChanges) {
-      set({ tfTree: newTfTree, lastUpdate: newLastUpdate })
+      set({ tfTree: newTfTree, lastUpdate: newLastUpdate, updateTimestamps: newUpdateTimestamps })
     }
   },
 
@@ -219,6 +242,70 @@ export const useTFStore = create<TFState>((set, get) => ({
 
   setStaleTimeout: (timeout: number) => {
     set({ staleTimeout: timeout })
+  },
+
+  /**
+   * Calculate update rate (Hz) for a specific frame
+   */
+  getUpdateRate: (frameKey: string): number => {
+    const { updateTimestamps } = get()
+    const timestamps = updateTimestamps.get(frameKey)
+    
+    if (!timestamps || timestamps.length < 2) {
+      return 0
+    }
+
+    const now = Date.now()
+    const cutoff = now - RATE_WINDOW_MS
+    const recentTimestamps = timestamps.filter(t => t > cutoff)
+    
+    if (recentTimestamps.length < 2) {
+      return 0
+    }
+
+    // Calculate average rate from time differences
+    const timeSpan = recentTimestamps[recentTimestamps.length - 1] - recentTimestamps[0]
+    if (timeSpan <= 0) return 0
+    
+    const rate = ((recentTimestamps.length - 1) / timeSpan) * 1000 // Convert to Hz
+    return Math.round(rate * 10) / 10 // Round to 1 decimal place
+  },
+
+  /**
+   * Get update rates for all frames
+   */
+  getAllUpdateRates: (): Map<string, number> => {
+    const { updateTimestamps, getUpdateRate } = get()
+    const rates = new Map<string, number>()
+    
+    updateTimestamps.forEach((_, key) => {
+      rates.set(key, getUpdateRate(key))
+    })
+    
+    return rates
+  },
+
+  /**
+   * Export TF tree as JSON for debugging
+   */
+  exportTreeAsJSON: (): string => {
+    const { tfTree, lastUpdate } = get()
+    const now = Date.now()
+    
+    const exportData = {
+      exportTime: new Date().toISOString(),
+      frameCount: tfTree.size,
+      transforms: Array.from(tfTree.entries()).map(([key, transform]) => ({
+        key,
+        parent: transform.parent,
+        child: transform.child,
+        translation: transform.translation,
+        rotation: transform.rotation,
+        isStatic: transform.isStatic,
+        age: now - (lastUpdate.get(key) || 0)
+      }))
+    }
+    
+    return JSON.stringify(exportData, null, 2)
   }
 }))
-

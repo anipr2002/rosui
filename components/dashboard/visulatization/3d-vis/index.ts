@@ -8,3 +8,4 @@ export {
   PointCloudRenderer,
 } from "./scene-objects/point-cloud";
 export { MarkerManager, MarkerRenderer } from "./scene-objects/markers";
+export { WebGPUProvider, useWebGPU } from "./webgpu-context";

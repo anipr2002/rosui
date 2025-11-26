@@ -1,4 +1,5 @@
 import { createMDX } from 'fumadocs-mdx/next';
+import typegpu from 'unplugin-typegpu/webpack';
 
 /** @type {import('next').NextConfig} */
 const config = {
@@ -6,7 +7,7 @@ const config = {
   experimental: {
     reactCompiler: true,
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
@@ -14,6 +15,12 @@ const config = {
       os: false
     }
     config.externals.push('node-gyp-build')
+    
+    // Add TypeGPU plugin for WGSL transpilation
+    if (!isServer) {
+      config.plugins.push(typegpu())
+    }
+    
     return config
   }
 };

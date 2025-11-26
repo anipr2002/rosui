@@ -34,10 +34,10 @@ function TFNode({ data, selected }: NodeProps<TFNodeData>) {
 
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <div
-            className={`rounded-xl border-2 ${getBorderColor()} ${getHeaderBg()} shadow-sm min-w-[180px] ${
+            className={`rounded-xl border-2 ${getBorderColor()} ${getHeaderBg()} shadow-sm min-w-[180px] cursor-pointer ${
               selected ? "ring-2 ring-blue-500 ring-offset-2" : ""
             }`}
           >

@@ -1,9 +1,44 @@
-import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
-import type { WebhookEvent } from "@clerk/backend";
-import { Webhook } from "svix";
-const http = httpRouter();
+import { httpRouter } from "convex/server"
+import { httpAction } from "./_generated/server"
+import { internal } from "./_generated/api"
+import type { WebhookEvent } from "@clerk/backend"
+import { Webhook } from "svix"
+import { polar } from "./polar"
+
+const http = httpRouter()
+
+// Register Polar webhook routes for subscription management
+polar.registerRoutes(http, {
+  onSubscriptionCreated: async (ctx, event) => {
+    const { productId, customerId } = event.data
+    console.log(`Subscription created: product=${productId}, customer=${customerId}`)
+    // Subscription tier is updated via the internal mutation triggered by product mapping
+    await ctx.runMutation(internal.users.updateSubscriptionFromPolar, {
+      polarCustomerId: customerId,
+      productId,
+      status: "active",
+    })
+  },
+  onSubscriptionUpdated: async (ctx, event) => {
+    const { productId, customerId, status, canceledAt } = event.data
+    console.log(`Subscription updated: product=${productId}, customer=${customerId}, status=${status}`)
+    
+    // Handle cancellation
+    if (canceledAt || status === "canceled") {
+      await ctx.runMutation(internal.users.updateSubscriptionFromPolar, {
+        polarCustomerId: customerId,
+        productId: null,
+        status: "canceled",
+      })
+    } else {
+      await ctx.runMutation(internal.users.updateSubscriptionFromPolar, {
+        polarCustomerId: customerId,
+        productId,
+        status: status || "active",
+      })
+    }
+  },
+})
 
 http.route({
   path: "/clerk-users-webhook",

@@ -1,18 +1,31 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
+import { CheckoutLink } from "@convex-dev/polar/react";
+import { api } from "@/convex/_generated/api";
+import { useConvexAuth } from "convex/react";
+import Link from "next/link";
 import React from "react";
+
+// Polar Product IDs - Replace these with your actual product IDs from Polar dashboard
+// These should match the products configured in convex/polar.ts
+const POLAR_PRODUCTS = {
+  proMonthly: "b6970110-bc70-4d40-9401-3d5dd2caf607",
+  teamMonthly: "5135d64d-ce9d-47d8-91d4-b13747a11e93",
+};
 
 // Pricing Plans Configuration
 const PRICING_PLANS = [
   {
     name: "Free",
+    tier: "free" as const,
     price: "$0",
     period: "/mo",
     billingInfo: "Get started for free",
-    buttonText: "Choose Plan",
-    buttonColor: "bg-amber-500",
+    buttonText: "Get Started",
+    buttonColor: "bg-amber-500 hover:bg-amber-600",
     cardColor: "bg-amber-50",
-    // badge: { text: "Current plan", style: "text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded" },
+    productIds: null, // Free tier has no checkout
     features: [
       "Subscribe/Publish to Topics",
       "Call Services and Actions",
@@ -29,16 +42,18 @@ const PRICING_PLANS = [
   },
   {
     name: "Pro",
+    tier: "pro" as const,
     price: "$3.99",
     period: "/mo",
-    billingInfo: "Billed yearly at $40.00/year",
-    buttonText: "Upgrade",
+    billingInfo: "billed monthly",
+    buttonText: "Upgrade to Pro",
     buttonColor: "bg-blue-500 hover:bg-blue-600",
     cardColor: "bg-blue-50",
     badge: {
       text: "Most popular",
-      style: "text-xs text- border border-blue-400  px-2 py-1 rounded",
+      style: "text-xs text-blue-600 border border-blue-400 px-2 py-1 rounded",
     },
+    productIds: [POLAR_PRODUCTS.proMonthly],
     featuresPrefix: "Everything in Free, plus:",
     features: [
       "Create upto 10 layouts",
@@ -50,12 +65,14 @@ const PRICING_PLANS = [
   },
   {
     name: "Teams",
+    tier: "team" as const,
     price: "$12.99",
     period: "/mo",
-    billingInfo: "Billed yearly at $130.00/year",
-    buttonText: "Upgrade",
+    billingInfo: "billed monthly",
+    buttonText: "Upgrade to Teams",
     buttonColor: "bg-green-500 hover:bg-green-600",
     cardColor: "bg-green-50",
+    productIds: [POLAR_PRODUCTS.teamMonthly],
     featuresPrefix: "Everything in Pro, plus:",
     features: [
       "Unlimited Layouts",
@@ -67,9 +84,51 @@ const PRICING_PLANS = [
   },
 ];
 
+function PricingButton({ plan }: { plan: (typeof PRICING_PLANS)[number] }) {
+  const { isAuthenticated } = useConvexAuth();
+
+  // Free tier - link to sign up
+  if (!plan.productIds) {
+    return (
+      <Link href="/sign-up">
+        <Button
+          className={`w-full py-2.5 sm:py-3 px-4 rounded-lg ${plan.buttonColor} text-white font-medium transition-colors text-sm sm:text-base`}
+        >
+          {plan.buttonText}
+        </Button>
+      </Link>
+    );
+  }
+
+  // Paid tiers - if not authenticated, link to sign in first
+  if (!isAuthenticated) {
+    return (
+      <Link href="/sign-in">
+        <Button
+          className={`w-full py-2.5 sm:py-3 px-4 rounded-lg ${plan.buttonColor} text-white font-medium transition-colors text-sm sm:text-base`}
+        >
+          {plan.buttonText}
+        </Button>
+      </Link>
+    );
+  }
+
+  // Authenticated - show checkout link
+  return (
+    <CheckoutLink
+      polarApi={api.polar}
+      productIds={plan.productIds}
+      embed={true}
+      className={`w-full inline-flex items-center justify-center py-2.5 sm:py-3 px-4 rounded-lg ${plan.buttonColor} text-white font-medium transition-colors text-sm sm:text-base`}
+    >
+      {plan.buttonText}
+    </CheckoutLink>
+  );
+}
+
 const Pricing = () => {
   return (
-    <section className="relative w-full min-h-screen ">
+    <section className="relative w-full min-h-screen">
       {/* Header Section */}
       <div className="relative px-4 sm:px-6 md:px-12 lg:px-20 pt-8 sm:pt-12 md:pt-16 pb-6 md:pb-8">
         <div className="max-w-7xl mx-auto">
@@ -152,11 +211,9 @@ const Pricing = () => {
                   </p>
 
                   {/* Button */}
-                  <Button
-                    className={`w-full py-2.5 sm:py-3 px-4 rounded-lg ${plan.buttonColor} text-white font-medium mb-2 transition-colors text-sm sm:text-base`}
-                  >
-                    {plan.buttonText}
-                  </Button>
+                  <div className="mb-2">
+                    <PricingButton plan={plan} />
+                  </div>
                   <p className="text-xs text-gray-500 text-center mb-6 sm:mb-7 md:mb-8">
                     Cancel anytime
                   </p>

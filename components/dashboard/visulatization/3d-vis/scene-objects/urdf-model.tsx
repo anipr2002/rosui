@@ -10,6 +10,26 @@ import URDFLoader from "urdf-loader";
 import { STLLoader } from "three-stdlib";
 import { ColladaLoader } from "three-stdlib";
 
+// WebGPU-compatible material factory
+function createWebGPUCompatibleMaterial(
+  color: number | string,
+  options?: {
+    metalness?: number;
+    roughness?: number;
+    transparent?: boolean;
+    opacity?: number;
+  }
+): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color,
+    metalness: options?.metalness ?? 0.3,
+    roughness: options?.roughness ?? 0.7,
+    transparent: options?.transparent ?? false,
+    opacity: options?.opacity ?? 1.0,
+    side: THREE.DoubleSide,
+  });
+}
+
 interface URDFModelProps {
   meshBasePath?: string;
 }
@@ -31,7 +51,7 @@ export function URDFModel({
     isLoadingURDF,
     sceneSettings,
   } = use3DVisStore();
-  
+
   // Note: Don't destructure these here - access them directly in useFrame
   // to get the latest values on each frame
 
@@ -111,11 +131,7 @@ export function URDFModel({
               httpPath,
               (geometry) => {
                 geometry.computeVertexNormals();
-                const material = new THREE.MeshStandardMaterial({
-                  color: 0xcccccc,
-                  metalness: 0.3,
-                  roughness: 0.7,
-                });
+                const material = createWebGPUCompatibleMaterial(0xcccccc);
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
@@ -128,9 +144,7 @@ export function URDFModel({
                   error
                 );
                 const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-                const material = new THREE.MeshStandardMaterial({
-                  color: 0x2196f3,
-                });
+                const material = createWebGPUCompatibleMaterial(0x2196f3);
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
@@ -157,9 +171,7 @@ export function URDFModel({
                   error
                 );
                 const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-                const material = new THREE.MeshStandardMaterial({
-                  color: 0x2196f3,
-                });
+                const material = createWebGPUCompatibleMaterial(0x2196f3);
                 const mesh = new THREE.Mesh(geometry, material);
                 mesh.castShadow = true;
                 mesh.receiveShadow = true;
@@ -230,11 +242,9 @@ export function URDFModel({
 
           // Create a more visible placeholder - use a sphere to represent each link
           const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-          const material = new THREE.MeshStandardMaterial({
-            color: 0x2196f3,
+          const material = createWebGPUCompatibleMaterial(0x2196f3, {
             metalness: 0.4,
             roughness: 0.6,
-            transparent: false,
           });
           const mesh = new THREE.Mesh(geometry, material);
           mesh.castShadow = true;
@@ -252,11 +262,7 @@ export function URDFModel({
             meshPath,
             (geometry) => {
               geometry.computeVertexNormals();
-              const material = new THREE.MeshStandardMaterial({
-                color: 0xcccccc,
-                metalness: 0.3,
-                roughness: 0.7,
-              });
+              const material = createWebGPUCompatibleMaterial(0xcccccc);
               const mesh = new THREE.Mesh(geometry, material);
               mesh.castShadow = true;
               mesh.receiveShadow = true;
@@ -267,9 +273,7 @@ export function URDFModel({
               console.error("Error loading STL mesh:", error);
               // Fallback to sphere geometry
               const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-              const material = new THREE.MeshStandardMaterial({
-                color: 0xff9800,
-              });
+              const material = createWebGPUCompatibleMaterial(0xff9800);
               const mesh = new THREE.Mesh(geometry, material);
               done(mesh);
             }
@@ -292,9 +296,7 @@ export function URDFModel({
               console.error("Error loading DAE mesh:", error);
               // Fallback to sphere geometry
               const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-              const material = new THREE.MeshStandardMaterial({
-                color: 0xff9800,
-              });
+              const material = createWebGPUCompatibleMaterial(0xff9800);
               const mesh = new THREE.Mesh(geometry, material);
               done(mesh);
             }
@@ -302,7 +304,7 @@ export function URDFModel({
         } else {
           // Unsupported format, use placeholder sphere
           const geometry = new THREE.SphereGeometry(0.05, 16, 16);
-          const material = new THREE.MeshStandardMaterial({ color: 0x9e9e9e });
+          const material = createWebGPUCompatibleMaterial(0x9e9e9e);
           const mesh = new THREE.Mesh(geometry, material);
           done(mesh);
         }
@@ -361,7 +363,10 @@ export function URDFModel({
 
         // Store joint map for use in useFrame
         jointMapRef.current = jointMap;
-        console.log(`Extracted ${jointMap.size} movable joints:`, Array.from(jointMap.keys()));
+        console.log(
+          `Extracted ${jointMap.size} movable joints:`,
+          Array.from(jointMap.keys())
+        );
 
         // Compute bounding box to see the actual size
         const box = new THREE.Box3().setFromObject(robot);
@@ -411,7 +416,8 @@ export function URDFModel({
 
     // Get latest state directly from store (not from component scope)
     // This ensures we always have the most recent joint states
-    const { jointStatesEnabled, currentJointStates, tfEnabled } = use3DVisStore.getState();
+    const { jointStatesEnabled, currentJointStates, tfEnabled } =
+      use3DVisStore.getState();
 
     // Primary: Update joints from joint_states topic
     if (jointStatesEnabled && currentJointStates.size > 0) {
@@ -431,7 +437,7 @@ export function URDFModel({
       // Look for base_link transform (common for mobile robots)
       // Try common frame names: base_link, base_footprint
       const baseFrameNames = ["base_link", "base_footprint"];
-      
+
       for (const frameName of baseFrameNames) {
         const transform = tfTree.get(frameName);
         if (transform && transform.parent !== frameName) {
@@ -440,14 +446,14 @@ export function URDFModel({
           if (groupRef.current) {
             // Store original rotation
             const originalRotation = robot.rotation.x;
-            
+
             // Update position from TF
             groupRef.current.position.set(
               transform.translation.x,
               transform.translation.y,
               transform.translation.z
             );
-            
+
             // Update rotation from TF quaternion
             const quaternion = new THREE.Quaternion(
               transform.rotation.x,
@@ -456,7 +462,7 @@ export function URDFModel({
               transform.rotation.w
             );
             groupRef.current.quaternion.copy(quaternion);
-            
+
             // Re-apply coordinate system fix
             robot.rotation.x = originalRotation;
           }

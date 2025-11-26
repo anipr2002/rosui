@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  Suspense,
+  useCallback,
+} from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
   OrbitControls,
@@ -15,11 +21,12 @@ import { URDFModel } from "./scene-objects/urdf-model";
 import { TFAxes } from "./scene-objects/tf-axes";
 import { PointCloudManager } from "./scene-objects/point-cloud";
 import { MarkerManager } from "./scene-objects/markers";
+import { WebGPUProvider, useWebGPU } from "./webgpu-context";
 import * as THREE from "three";
 
 interface Viewer3DProps {
   width?: number;
-  height?: number;
+  height?: number | string;
 }
 
 function Scene() {
@@ -118,29 +125,47 @@ function LoadingFallback() {
   );
 }
 
-export function Viewer3D({ width = 800, height = 600 }: Viewer3DProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
+function Viewer3DContent({ width = 800, height = 600 }: Viewer3DProps) {
+  const { isSupported, isInitialized, error: webgpuError } = useWebGPU();
   const [viewerError, setViewerError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const { status } = useRosStore();
   const { urdfError, sceneSettings } = use3DVisStore();
 
-  // Initialize viewer (ros3d is already in package.json, no need to load from CDN)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    // ROS3D should be available from the installed package
-    // Mark as initialized immediately since we're using the npm package
-    setIsInitialized(true);
-    setViewerError(null);
-  }, []);
-
   const displayError = viewerError || urdfError;
+
+  // Log WebGPU status
+  useEffect(() => {
+    if (isInitialized) {
+      console.log(
+        "WebGPU status:",
+        isSupported ? "supported" : "not supported"
+      );
+      if (webgpuError) {
+        console.warn("WebGPU warning:", webgpuError);
+      }
+    }
+  }, [isInitialized, isSupported, webgpuError]);
+
+  const canvasContent = (
+    <>
+      <Suspense fallback={<LoadingFallback />}>
+        <Scene />
+      </Suspense>
+      <OrbitControls
+        enableDamping
+        dampingFactor={0.05}
+        minDistance={0.5}
+        maxDistance={100}
+        target={[0, 0, 0]}
+      />
+    </>
+  );
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-none pt-0 rounded-xl border-teal-200">
+      <Card className="shadow-none py-0 rounded-xl border-teal-200">
         <CardContent className="p-0">
           {displayError ? (
             <div className="p-8 bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg">
@@ -179,7 +204,7 @@ export function Viewer3D({ width = 800, height = 600 }: Viewer3DProps) {
               ref={canvasRef}
               className="w-full rounded-lg overflow-hidden"
               style={{
-                height: `${height}px`,
+                height: typeof height === "string" ? height : `${height}px`,
                 backgroundColor: sceneSettings.backgroundColor,
               }}
             >
@@ -192,21 +217,20 @@ export function Viewer3D({ width = 800, height = 600 }: Viewer3DProps) {
                 }}
                 shadows
               >
-                <Suspense fallback={<LoadingFallback />}>
-                  <Scene />
-                </Suspense>
-                <OrbitControls
-                  enableDamping
-                  dampingFactor={0.05}
-                  minDistance={0.5}
-                  maxDistance={100}
-                  target={[0, 0, 0]}
-                />
+                {canvasContent}
               </Canvas>
             </div>
           )}
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function Viewer3D(props: Viewer3DProps) {
+  return (
+    <WebGPUProvider>
+      <Viewer3DContent {...props} />
+    </WebGPUProvider>
   );
 }

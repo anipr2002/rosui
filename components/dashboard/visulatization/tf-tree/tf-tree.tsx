@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, useMemo, useState } from "react";
+import React, { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -9,7 +9,9 @@ import ReactFlow, {
   useEdgesState,
   useReactFlow,
   Panel,
+  ReactFlowProvider,
 } from "reactflow";
+import type { ReactFlowInstance, Node } from "reactflow";
 import "reactflow/dist/style.css";
 import { useTFStore } from "@/store/tf-store";
 import { useRosStore } from "@/store/ros-store";
@@ -19,6 +21,7 @@ import { getLayoutedElements } from "@/lib/tf-tree-reactflow/layout-tf-tree";
 import TFNode from "./tf-node";
 import { TFControls } from "./tf-controls";
 import { TFDetailsPanel } from "./tf-details-panel";
+import { TFDebugPanel } from "./tf-debug-panel";
 import type { TFNodeData } from "@/lib/tf-tree-reactflow/tf-to-reactflow";
 import { Loader2, GitBranch } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -27,19 +30,19 @@ interface TFTreeProps {
   hideControls?: boolean;
   hideDetailsPanel?: boolean;
   searchQuery?: string;
-  layoutDirection?: 'TB' | 'LR' | 'RL' | 'BT';
+  layoutDirection?: "TB" | "LR" | "RL" | "BT";
   showMinimap?: boolean;
   staleTimeout?: number;
 }
 
-export function TFTree({
+// Inner component that uses useReactFlow hook
+function TFTreeInner({
   hideControls = false,
   hideDetailsPanel = false,
   searchQuery: externalSearchQuery,
-  layoutDirection: externalLayoutDirection = 'TB',
+  layoutDirection: externalLayoutDirection = "TB",
   showMinimap = true,
-  staleTimeout: externalStaleTimeout,
-}: TFTreeProps = {}) {
+}: Omit<TFTreeProps, "staleTimeout">) {
   const nodeTypes = useMemo(
     () => ({
       tfNode: TFNode,
@@ -55,9 +58,50 @@ export function TFTree({
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNode, setSelectedNode] = useState<TFNodeData | null>(null);
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
-  const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
+  const searchQuery =
+    externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery;
   const [layoutCounter, setLayoutCounter] = useState(0);
+  const [debugMode, setDebugMode] = useState(false);
+  const [isReactFlowReady, setIsReactFlowReady] = useState(false);
+  
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
+
+  // Handle node click
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node<TFNodeData>) => {
+      setSelectedNode(node.data);
+    },
+    []
+  );
+
+  // Handle pane click (deselect)
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setLayoutCounter((prev) => prev + 1);
+  }, []);
+
+  const handleFitView = useCallback(() => {
+    if (reactFlowInstance.current) {
+      reactFlowInstance.current.fitView({ padding: 0.2, duration: 200 });
+    } else {
+      fitView({ padding: 0.2, duration: 200 });
+    }
+  }, [fitView]);
+
+  // Handle React Flow initialization
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    reactFlowInstance.current = instance;
+    setIsReactFlowReady(true);
+    // Delay fitView to ensure nodes are rendered
+    setTimeout(() => {
+      instance.fitView({ padding: 0.2, duration: 200 });
+    }, 100);
+  }, []);
 
   // Subscribe to TF topics on mount
   useEffect(() => {
@@ -78,7 +122,7 @@ export function TFTree({
     return buildTreeStructure(tfTree);
   }, [tfTree, layoutCounter]);
 
-  // Debounced layout update
+  // Layout and fit view when tree structure changes
   useEffect(() => {
     if (!treeStructure) {
       setNodes([]);
@@ -86,45 +130,66 @@ export function TFTree({
       return;
     }
 
-    const timer = setTimeout(() => {
-      const { nodes: rawNodes, edges: rawEdges } = convertToReactFlow(
-        treeStructure,
-        lastUpdate
+    const { nodes: rawNodes, edges: rawEdges } = convertToReactFlow(
+      treeStructure,
+      lastUpdate
+    );
+
+    // Filter nodes based on search query
+    let filteredNodes = rawNodes;
+    let filteredEdges = rawEdges;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchingNodeIds = new Set(
+        rawNodes
+          .filter((node) => node.data.frame.toLowerCase().includes(query))
+          .map((node) => node.id)
       );
 
-      // Filter nodes based on search query
-      let filteredNodes = rawNodes;
-      let filteredEdges = rawEdges;
+      filteredNodes = rawNodes.filter((node) => matchingNodeIds.has(node.id));
+      filteredEdges = rawEdges.filter(
+        (edge) =>
+          matchingNodeIds.has(edge.source) && matchingNodeIds.has(edge.target)
+      );
+    }
 
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchingNodeIds = new Set(
-          rawNodes
-            .filter((node) => node.data.frame.toLowerCase().includes(query))
-            .map((node) => node.id)
-        );
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      filteredNodes,
+      filteredEdges,
+      externalLayoutDirection as any
+    );
 
-        filteredNodes = rawNodes.filter((node) => matchingNodeIds.has(node.id));
-        filteredEdges = rawEdges.filter(
-          (edge) =>
-            matchingNodeIds.has(edge.source) && matchingNodeIds.has(edge.target)
-        );
-      }
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
 
-      const { nodes: layoutedNodes, edges: layoutedEdges } =
-        getLayoutedElements(filteredNodes, filteredEdges, externalLayoutDirection as any);
+    // Fit view after layout if React Flow is ready
+    if (isReactFlowReady && reactFlowInstance.current) {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          reactFlowInstance.current?.fitView({ padding: 0.2, duration: 200 });
+        }, 50);
+      });
+    }
+  }, [
+    treeStructure,
+    lastUpdate,
+    searchQuery,
+    externalLayoutDirection,
+    setNodes,
+    setEdges,
+    isReactFlowReady,
+  ]);
 
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
-
-      // Fit view after layout
-      setTimeout(() => {
-        fitView({ padding: 0.2, duration: 200 });
-      }, 50);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [treeStructure, lastUpdate, searchQuery, externalLayoutDirection, setNodes, setEdges, fitView]);
+  // Force fit view when React Flow becomes ready and we have nodes
+  useEffect(() => {
+    if (isReactFlowReady && nodes.length > 0 && reactFlowInstance.current) {
+      const timer = setTimeout(() => {
+        reactFlowInstance.current?.fitView({ padding: 0.2, duration: 200 });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isReactFlowReady, nodes.length]);
 
   // Periodic update to refresh node ages
   useEffect(() => {
@@ -133,9 +198,7 @@ export function TFTree({
         nds.map((node) => {
           const now = Date.now();
           const transform = node.data.transform;
-          const key = transform
-            ? `${transform.parent}->${transform.child}`
-            : "";
+          const key = transform ? `${transform.parent}->${transform.child}` : "";
           const lastUpdateTime = lastUpdate.get(key) || 0;
           const age = now - lastUpdateTime;
 
@@ -152,24 +215,6 @@ export function TFTree({
 
     return () => clearInterval(interval);
   }, [setNodes, lastUpdate]);
-
-  // Handle node click
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: any) => {
-    setSelectedNode(node.data);
-  }, []);
-
-  // Handle pane click (deselect)
-  const onPaneClick = useCallback(() => {
-    setSelectedNode(null);
-  }, []);
-
-  const handleRefresh = useCallback(() => {
-    setLayoutCounter((prev) => prev + 1);
-  }, []);
-
-  const handleFitView = useCallback(() => {
-    fitView({ padding: 0.2, duration: 200 });
-  }, [fitView]);
 
   // Loading state
   if (!isSubscribed) {
@@ -197,6 +242,59 @@ export function TFTree({
     );
   }
 
+  const renderReactFlow = (height: string) => (
+    <div
+      ref={containerRef}
+      style={{ height, width: "100%", minHeight: height === "100%" ? "400px" : undefined }}
+    >
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
+        nodeTypes={nodeTypes}
+        onInit={onInit}
+        minZoom={0.1}
+        maxZoom={2}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+        }}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background color="#e5e7eb" gap={16} />
+        <Controls showInteractive={false} />
+        {showMinimap && (
+          <MiniMap
+            nodeColor={(node) => {
+              const data = node.data as TFNodeData;
+              if (data.isRoot) return "#3b82f6";
+              if (data.isStatic) return "#9ca3af";
+              return "#6b7280";
+            }}
+            maskColor="rgba(0, 0, 0, 0.1)"
+            style={{
+              backgroundColor: "#f9fafb",
+            }}
+          />
+        )}
+
+        <Panel
+          position="top-right"
+          className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
+        >
+          <div className="text-xs text-gray-600 space-y-1">
+            <div>🟢 Fresh (&lt;1s)</div>
+            <div>🟡 Recent (1-5s)</div>
+            <div>🟠 Stale (5-10s)</div>
+            <div>🔴 Very Old (&gt;10s)</div>
+          </div>
+        </Panel>
+      </ReactFlow>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {!hideControls && (
@@ -206,57 +304,15 @@ export function TFTree({
           onFitView={handleFitView}
           searchQuery={internalSearchQuery}
           onSearchChange={setInternalSearchQuery}
+          debugMode={debugMode}
+          onDebugModeChange={setDebugMode}
+          treeStructure={treeStructure}
         />
       )}
 
       {hideControls ? (
         // Panel mode - no card wrapper
-        <div style={{ height: "100%", width: "100%" }}>
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodeClick={onNodeClick}
-            onPaneClick={onPaneClick}
-            nodeTypes={nodeTypes}
-            fitView
-            minZoom={0.1}
-            maxZoom={2}
-            defaultEdgeOptions={{
-              type: "smoothstep",
-            }}
-          >
-            <Background color="#e5e7eb" gap={16} />
-            <Controls showInteractive={false} />
-            {showMinimap && (
-              <MiniMap
-                nodeColor={(node) => {
-                  const data = node.data as TFNodeData;
-                  if (data.isRoot) return "#3b82f6";
-                  if (data.isStatic) return "#9ca3af";
-                  return "#6b7280";
-                }}
-                maskColor="rgba(0, 0, 0, 0.1)"
-                style={{
-                  backgroundColor: "#f9fafb",
-                }}
-              />
-            )}
-
-            <Panel
-              position="top-right"
-              className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
-            >
-              <div className="text-xs text-gray-600 space-y-1">
-                <div>🟢 Fresh (&lt;1s)</div>
-                <div>🟡 Recent (1-5s)</div>
-                <div>🟠 Stale (5-10s)</div>
-                <div>🔴 Very Old (&gt;10s)</div>
-              </div>
-            </Panel>
-          </ReactFlow>
-        </div>
+        renderReactFlow("100%")
       ) : (
         // Standalone mode - with card wrapper
         <Card className="shadow-none pt-0 rounded-xl border-blue-200">
@@ -275,52 +331,16 @@ export function TFTree({
           </CardHeader>
 
           <CardContent className="px-0 py-0">
-            <div style={{ height: "600px" }}>
-              <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodeClick={onNodeClick}
-                onPaneClick={onPaneClick}
-                nodeTypes={nodeTypes}
-                fitView
-                minZoom={0.1}
-                maxZoom={2}
-                defaultEdgeOptions={{
-                  type: "smoothstep",
-                }}
-              >
-                <Background color="#e5e7eb" gap={16} />
-                <Controls showInteractive={false} />
-                <MiniMap
-                  nodeColor={(node) => {
-                    const data = node.data as TFNodeData;
-                    if (data.isRoot) return "#3b82f6";
-                    if (data.isStatic) return "#9ca3af";
-                    return "#6b7280";
-                  }}
-                  maskColor="rgba(0, 0, 0, 0.1)"
-                  style={{
-                    backgroundColor: "#f9fafb",
-                  }}
-                />
-
-                <Panel
-                  position="top-right"
-                  className="bg-white/90 backdrop-blur-sm rounded-lg p-2 shadow-sm"
-                >
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>🟢 Fresh (&lt;1s)</div>
-                    <div>🟡 Recent (1-5s)</div>
-                    <div>🟠 Stale (5-10s)</div>
-                    <div>🔴 Very Old (&gt;10s)</div>
-                  </div>
-                </Panel>
-              </ReactFlow>
-            </div>
+            {renderReactFlow("600px")}
           </CardContent>
         </Card>
+      )}
+
+      {debugMode && (
+        <TFDebugPanel
+          treeStructure={treeStructure}
+          selectedNode={selectedNode}
+        />
       )}
 
       {!hideDetailsPanel && (
@@ -330,5 +350,14 @@ export function TFTree({
         />
       )}
     </div>
+  );
+}
+
+// Outer wrapper component with ReactFlowProvider
+export function TFTree(props: TFTreeProps) {
+  return (
+    <ReactFlowProvider>
+      <TFTreeInner {...props} />
+    </ReactFlowProvider>
   );
 }
