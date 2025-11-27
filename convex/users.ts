@@ -170,7 +170,13 @@ async function getEffectiveTier(
 export const getUserStorageInfo = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUser(ctx);
+    
+    // Return null if user is not authenticated yet
+    if (!user) {
+      return null;
+    }
+    
     const identity = await ctx.auth.getUserIdentity();
 
     // Get effective tier from Polar subscription (takes precedence over database tier)
@@ -197,7 +203,16 @@ export const getUserStorageInfo = query({
 export const canUploadFile = query({
   args: { fileSize: v.number() },
   handler: async (ctx, { fileSize }) => {
-    const user = await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUser(ctx);
+    
+    // Return cannot upload if user is not authenticated yet
+    if (!user) {
+      return {
+        canUpload: false,
+        reason: "User not authenticated",
+      };
+    }
+    
     const identity = await ctx.auth.getUserIdentity();
 
     // Get effective tier from Polar subscription
@@ -236,7 +251,13 @@ export const canUploadFile = query({
 export const getUserLimitsInfo = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUser(ctx);
+    
+    // Return null if user is not authenticated yet
+    if (!user) {
+      return null;
+    }
+    
     const identity = await ctx.auth.getUserIdentity();
 
     // Get effective tier from Polar subscription
@@ -279,7 +300,16 @@ export const getUserLimitsInfo = query({
 export const canCreateLayout = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUser(ctx);
+    
+    // Return cannot create if user is not authenticated yet
+    if (!user) {
+      return {
+        canCreate: false,
+        reason: "User not authenticated",
+      };
+    }
+    
     const identity = await ctx.auth.getUserIdentity();
 
     // Get effective tier from Polar subscription
@@ -308,7 +338,16 @@ export const canCreateLayout = query({
 export const canUseWorkflow = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserOrThrow(ctx);
+    const user = await getCurrentUser(ctx);
+    
+    // Return cannot use if user is not authenticated yet
+    if (!user) {
+      return {
+        canUse: false,
+        reason: "User not authenticated",
+      };
+    }
+    
     const identity = await ctx.auth.getUserIdentity();
 
     // Get effective tier from Polar subscription

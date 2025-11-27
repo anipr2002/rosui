@@ -60,6 +60,12 @@ interface LogState {
   filters: FilterState
   availableNodes: Set<string>
   
+  // Topic Selection
+  selectedTopic: string
+  availableTopics: string[]
+  setSelectedTopic: (topic: string) => void
+  scanTopics: () => Promise<void>
+
   // Actions
   subscribe: () => Promise<void>
   unsubscribe: () => void
@@ -110,6 +116,51 @@ export const useLogStore = create<LogState>()(
       filters: defaultFilters,
       availableNodes: new Set(),
 
+      selectedTopic: LOG_TOPIC,
+      availableTopics: [LOG_TOPIC],
+
+      setSelectedTopic: (topic: string) => {
+        const { selectedTopic, isSubscribed } = get()
+        if (topic === selectedTopic) return
+
+        set({ selectedTopic: topic })
+        
+        // If currently subscribed, resubscribe to new topic
+        if (isSubscribed) {
+          get().unsubscribe()
+          get().subscribe().catch(console.error)
+        }
+      },
+
+      scanTopics: async () => {
+        const ros = useRosStore.getState().ros
+        if (!ros || !ros.isConnected) return
+
+        try {
+          // Get all topics and filter for log types
+          ros.getTopics((result) => {
+            const logTopics: string[] = []
+            const { topics, types } = result
+            
+            topics.forEach((topic, index) => {
+              const type = types[index]
+              if (type === 'rcl_interfaces/msg/Log' || type === 'rosgraph_msgs/Log') {
+                logTopics.push(topic)
+              }
+            })
+
+            // Always include default rosout if not found (though it should be there)
+            if (!logTopics.includes(LOG_TOPIC)) {
+              logTopics.push(LOG_TOPIC)
+            }
+
+            set({ availableTopics: logTopics.sort() })
+          })
+        } catch (error) {
+          console.error('Failed to scan topics:', error)
+        }
+      },
+
       subscribe: async () => {
         const ros = useRosStore.getState().ros
         if (!ros || !ros.isConnected) {
@@ -117,7 +168,7 @@ export const useLogStore = create<LogState>()(
           throw new Error('ROS connection not available')
         }
 
-        const { topic: existingTopic } = get()
+        const { topic: existingTopic, selectedTopic } = get()
         if (existingTopic) {
           console.warn('Already subscribed to logs')
           return
@@ -128,7 +179,7 @@ export const useLogStore = create<LogState>()(
         try {
           const topic = new ROSLIB.Topic({
             ros,
-            name: LOG_TOPIC,
+            name: selectedTopic,
             messageType: LOG_MESSAGE_TYPE
           })
 
@@ -146,8 +197,8 @@ export const useLogStore = create<LogState>()(
             isLoading: false
           })
 
-          console.log(`Successfully subscribed to ${LOG_TOPIC}`)
-          toast.success('Connected to ROS logs')
+          console.log(`Successfully subscribed to ${selectedTopic}`)
+          toast.success(`Connected to ${selectedTopic}`)
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to subscribe'
           console.error('Failed to subscribe to logs:', error)
@@ -167,7 +218,6 @@ export const useLogStore = create<LogState>()(
               isSubscribed: false
             })
             console.log('Unsubscribed from logs')
-            toast.info('Disconnected from ROS logs')
           } catch (error) {
             console.error('Failed to unsubscribe from logs:', error)
           }
@@ -390,7 +440,8 @@ export const useLogStore = create<LogState>()(
       name: 'log-storage',
       partialize: (state) => ({
         maxBufferSize: state.maxBufferSize,
-        filters: state.filters
+        filters: state.filters,
+        selectedTopic: state.selectedTopic
       })
     }
   )

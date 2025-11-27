@@ -222,17 +222,18 @@ export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
               <a href="#" className="flex items-center gap-2">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg relative">
                   <Image src="/logo.svg" alt="ROSUI" width={16} height={16} />
+                </div>
+                <div className="flex flex-1 items-center gap-2 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">ROSUI</span>
                   {isProUser && (
                     <Badge
                       variant="default"
-                      className="absolute -top-2 -right-2.5 px-1 py-0 text-[10px] h-3 bg-gradient-to-r from-amber-500 to-orange-500 border-none"
+                      className="group relative ml-1 overflow-hidden border-none bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-0.5 text-[11px] h-5"
                     >
+                      <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                       Pro
                     </Badge>
                   )}
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">ROSUI</span>
                 </div>
               </a>
             </SidebarMenuButton>

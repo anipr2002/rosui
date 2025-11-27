@@ -13,12 +13,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Terminal, Wifi, Play, Pause, Loader2 } from "lucide-react";
+import { Terminal, Wifi, Play, Pause, Loader2, RefreshCw } from "lucide-react";
 import { LogEntryRow } from "./log-entry-row";
 import { LogFilters } from "./log-filters";
 import { LogControls } from "./log-controls";
@@ -37,11 +44,22 @@ export function LogViewer() {
     setAutoScroll,
     markAsRead,
     unreadCount,
+    selectedTopic,
+    availableTopics,
+    setSelectedTopic,
+    scanTopics,
   } = useLogStore();
 
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [userHasScrolled, setUserHasScrolled] = useState(false);
   const isAutoScrolling = useRef(false);
+
+  // Scan topics when ROS connects
+  useEffect(() => {
+    if (ros && rosStatus === "connected") {
+      scanTopics();
+    }
+  }, [ros, rosStatus, scanTopics]);
 
   // Subscribe to logs when ROS is connected
   useEffect(() => {
@@ -56,7 +74,7 @@ export function LogViewer() {
         unsubscribe();
       }
     };
-  }, [ros, rosStatus, isSubscribed, isLoading, subscribe, unsubscribe]);
+  }, [ros, rosStatus, isSubscribed, isLoading, subscribe, unsubscribe, selectedTopic]);
 
   // Auto-scroll logic
   useEffect(() => {
@@ -123,9 +141,34 @@ export function LogViewer() {
               <CardTitle className="text-sm sm:text-base text-indigo-900">
                 ROS Logs Monitor
               </CardTitle>
-              <CardDescription className="text-xs text-indigo-700 font-mono">
-                /rosout
-              </CardDescription>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedTopic}
+                  onValueChange={setSelectedTopic}
+                  disabled={!isConnected}
+                >
+                  <SelectTrigger className="h-7 w-[200px] text-xs bg-white border-indigo-200 text-indigo-900">
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTopics.map((topic) => (
+                      <SelectItem key={topic} value={topic} className="text-xs">
+                        {topic}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100"
+                  onClick={() => scanTopics()}
+                  disabled={!isConnected}
+                  title="Refresh topics"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
             <div className="flex flex-col gap-1 items-end flex-shrink-0">
               {isLoading ? (

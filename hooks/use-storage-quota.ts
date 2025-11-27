@@ -30,7 +30,7 @@ export function useStorageQuota() {
   };
 
   return {
-    storageInfo,
+    storageInfo: storageInfo ?? null,
     canUploadFile,
     getRemainingStorage,
     getUsedPercentage,
