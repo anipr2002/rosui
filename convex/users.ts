@@ -385,3 +385,47 @@ export const incrementWorkflowCount = mutation({
     }
   },
 });
+
+// Get user profile with Clerk information
+export const getUserProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    
+    if (!identity) {
+      return null;
+    }
+
+    const user = await userByExternalId(ctx, identity.subject);
+    
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user._id,
+      name: user.name,
+      email: identity.email || "",
+      emailVerified: identity.emailVerified || false,
+      imageUrl: identity.pictureUrl || "",
+      username: identity.nickname || "",
+      externalId: user.externalId,
+    };
+  },
+});
+
+// Update user profile name in Convex
+export const updateUserProfile = mutation({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, { name }) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    
+    await ctx.db.patch(user._id, {
+      name,
+    });
+
+    return { success: true };
+  },
+});

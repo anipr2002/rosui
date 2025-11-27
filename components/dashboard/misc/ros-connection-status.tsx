@@ -14,7 +14,7 @@ export function RosConnectionStatus() {
 
   return (
     <Link
-      href="/dashboard/settings/ros-connection"
+      href="/dashboard/ros-settings/ros-connection"
       className={cn(
         "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
         "border",

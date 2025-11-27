@@ -254,7 +254,7 @@ export function RQTGraph({
               </p>
               <SpinnerCustom />
               {!hideControls && (
-                <Link href="/dashboard/settings/ros-connection">
+                <Link href="/dashboard/ros-settings/ros-connection">
                   <Button variant="outline" className="mt-4">
                     Go to Settings
                     <ArrowRight className="h-4 w-4" />

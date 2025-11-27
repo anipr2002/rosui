@@ -41,7 +41,7 @@ export function RosConnectionRequired({
           <p className="text-sm text-gray-500 mb-6 leading-relaxed">
             {description}
           </p>
-          <Link href="/dashboard/settings/ros-connection">
+          <Link href="/dashboard/ros-settings/ros-connection">
             <Button variant="outline" className="gap-2">
               Go to Settings
               <ArrowRight className="h-4 w-4" />

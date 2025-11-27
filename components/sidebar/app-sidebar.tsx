@@ -26,8 +26,10 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import type { DocsSidebarItem } from "@/lib/docs-sidebar";
 import { useUser } from "@clerk/nextjs";
+import { useStorageQuota } from "@/hooks/use-storage-quota";
 
 type AppSidebarProps = ComponentProps<typeof Sidebar> & {
   docsNav?: DocsSidebarItem[];
@@ -189,7 +191,7 @@ const sidebarData = {
   settings: [
     {
       name: "ROS Connection",
-      url: "/dashboard/settings/ros-connection",
+      url: "/dashboard/ros-settings/ros-connection",
       icon: Wifi,
     },
   ],
@@ -197,12 +199,15 @@ const sidebarData = {
 
 export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
   const { isSignedIn, user, isLoaded } = useUser();
+  const { storageInfo } = useStorageQuota();
 
   const sidebarUser = {
-    name: user?.fullName || "",
+    name: user?.username || "",
     email: user?.emailAddresses[0].emailAddress || "",
     avatar: user?.imageUrl || "",
   };
+
+  const isProUser = storageInfo?.tier === "pro" || storageInfo?.tier === "team";
 
   return (
     <Sidebar variant="inset" {...props}>
@@ -211,8 +216,16 @@ export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <a href="#" className="flex items-center gap-2">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg relative">
                   <Image src="/logo.svg" alt="ROSUI" width={16} height={16} />
+                  {isProUser && (
+                    <Badge 
+                      variant="default" 
+                      className="absolute -top-2 -right-2.5 px-1 py-0 text-[10px] h-3 bg-gradient-to-r from-amber-500 to-orange-500 border-none" 
+                    >
+                      Pro
+                    </Badge>
+                  )}
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">ROSUI</span>
@@ -229,7 +242,7 @@ export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
         <NavSecondary items={sidebarData.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser currentUser={sidebarUser} />
+        <NavUser currentUser={sidebarUser} isProUser={isProUser} />
       </SidebarFooter>
     </Sidebar>
   );

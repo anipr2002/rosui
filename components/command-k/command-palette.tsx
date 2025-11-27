@@ -206,7 +206,7 @@ const navigationData: NavigationGroup[] = [
     items: [
       {
         title: "ROS Connection",
-        url: "/dashboard/settings/ros-connection",
+        url: "/dashboard/ros-settings/ros-connection",
         icon: Wifi,
         description: "Configure ROS connection settings",
         keywords: ["connection", "ros", "wifi", "settings", "config"],

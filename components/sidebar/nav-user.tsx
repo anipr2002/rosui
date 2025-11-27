@@ -31,12 +31,14 @@ import Link from "next/link";
 
 export function NavUser({
   currentUser,
+  isProUser = false,
 }: {
   currentUser: {
     name: string;
     email: string;
     avatar: string;
   };
+  isProUser?: boolean;
 }) {
   const { isMobile } = useSidebar();
   return (
@@ -83,32 +85,32 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {!isProUser && (
+              <>
+                <DropdownMenuGroup>
+                  <Link href={"/billing"}>
+                    <DropdownMenuItem>
+                      <Sparkles />
+                      Upgrade to Pro
+                    </DropdownMenuItem>
+                  </Link>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuGroup>
-              <Link href={"/billing"}>
-                <DropdownMenuItem>
-                  <Sparkles />
-                  Upgrade to Pro
-                </DropdownMenuItem>
-              </Link>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <Link href={"/account"}>
+              <Link href={"/dashboard/settings"}>
                 <DropdownMenuItem>
                   <BadgeCheck />
                   Account
                 </DropdownMenuItem>
               </Link>
-              <Link href={"/billing"}>
+              <Link href={"/dashboard/billing"}>
                 <DropdownMenuItem>
                   <CreditCard />
                   Billing
                 </DropdownMenuItem>
               </Link>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
