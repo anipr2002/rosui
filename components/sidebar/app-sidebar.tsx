@@ -134,7 +134,7 @@ const sidebarData = {
         },
         {
           title: "Performance",
-          url: "#",
+          url: "/dashboard/monitoring/performance",
         },
       ],
     },

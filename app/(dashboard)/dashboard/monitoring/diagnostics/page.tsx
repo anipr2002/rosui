@@ -25,16 +25,6 @@ export default function DiagnosticsPage() {
 
   const nodeNames = getAllNodeNames();
 
-  // Not connected state
-  if (connectionStatus !== "connected") {
-    return (
-      <RosConnectionRequired
-        title="Diagnostics"
-        description="Connect to ROS to monitor system health, node status, and diagnostics."
-      />
-    );
-  }
-
   // Subscribe to diagnostics when ROS is connected
   useEffect(() => {
     if (connectionStatus === "connected" && ros) {
@@ -53,6 +43,16 @@ export default function DiagnosticsPage() {
     subscribeAllDiagnostics,
     unsubscribeAllDiagnostics,
   ]);
+
+  // Not connected state
+  if (connectionStatus !== "connected") {
+    return (
+      <RosConnectionRequired
+        title="Diagnostics"
+        description="Connect to ROS to monitor system health, node status, and diagnostics."
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto py-8">

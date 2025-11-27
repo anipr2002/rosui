@@ -132,3 +132,4 @@ self.onmessage = (event: MessageEvent<RawTopicWorkerCommand>) => {
 // Export empty object to make this a module
 export {}
 
+

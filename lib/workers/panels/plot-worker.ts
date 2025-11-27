@@ -328,3 +328,4 @@ self.onmessage = (event: MessageEvent<PlotWorkerCommand>) => {
 // Export empty object to make this a module
 export {}
 
+
