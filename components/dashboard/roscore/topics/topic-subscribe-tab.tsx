@@ -8,7 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Play, Square, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { Play, CirclePause, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface TopicSubscribeTabProps {
@@ -104,7 +104,7 @@ export function TopicSubscribeTab({
           variant="outline"
           className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
         >
-          <Square className="mr-2 h-4 w-4" />
+          <CirclePause className="mr-2 h-4 w-4" />
           Unsubscribe
         </Button>
 

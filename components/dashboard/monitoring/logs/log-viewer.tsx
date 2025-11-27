@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Terminal, Wifi, WifiOff, Play, Pause, Loader2 } from "lucide-react";
+import { Terminal, Wifi, Play, Pause, Loader2 } from "lucide-react";
 import { LogEntryRow } from "./log-entry-row";
 import { LogFilters } from "./log-filters";
 import { LogControls } from "./log-controls";
@@ -174,82 +174,60 @@ export function LogViewer() {
       </CardHeader>
 
       <CardContent className="px-0 py-0">
-        {!isConnected ? (
-          <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-8 m-6 max-w-md mx-auto text-center">
-            <WifiOff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">
-              ROS Not Connected
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Connect to ROS to view live logs
-            </p>
+        {/* Filters and Controls */}
+        <div className="px-6 py-4 border-b border-gray-200 space-y-3 bg-gray-50">
+          <LogFilters />
+          <div className="flex justify-between items-center">
             <Button
-              onClick={() =>
-                (window.location.href = "/dashboard/settings/ros-connection")
-              }
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              variant="outline"
+              size="sm"
+              onClick={handleTogglePause}
+              className="border-gray-300 text-gray-700 hover:bg-gray-100"
             >
-              Go to Connection Settings
+              {isAutoScrollEnabled ? (
+                <>
+                  <Pause className="h-4 w-4 mr-2" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Resume
+                </>
+              )}
             </Button>
+            <LogControls onJumpToLatest={handleJumpToLatest} />
           </div>
-        ) : (
-          <>
-            {/* Filters and Controls */}
-            <div className="px-6 py-4 border-b border-gray-200 space-y-3 bg-gray-50">
-              <LogFilters />
-              <div className="flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTogglePause}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-100"
-                >
-                  {isAutoScrollEnabled ? (
-                    <>
-                      <Pause className="h-4 w-4 mr-2" />
-                      Pause
-                    </>
-                  ) : (
-                    <>
-                      <Play className="h-4 w-4 mr-2" />
-                      Resume
-                    </>
-                  )}
-                </Button>
-                <LogControls onJumpToLatest={handleJumpToLatest} />
+        </div>
+
+        {/* Log Entries */}
+        <div
+          ref={logContainerRef}
+          onScroll={handleScroll}
+          className="h-[600px] overflow-y-auto bg-white font-mono"
+          style={{
+            scrollBehavior: isAutoScrollEnabled ? "smooth" : "auto",
+          }}
+        >
+          {filteredLogs.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <Terminal className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-sm text-gray-500">
+                  {isSubscribed
+                    ? "Waiting for log messages..."
+                    : "No logs available"}
+                </p>
               </div>
             </div>
-
-            {/* Log Entries */}
-            <div
-              ref={logContainerRef}
-              onScroll={handleScroll}
-              className="h-[600px] overflow-y-auto bg-white font-mono"
-              style={{
-                scrollBehavior: isAutoScrollEnabled ? "smooth" : "auto",
-              }}
-            >
-              {filteredLogs.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <Terminal className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm text-gray-500">
-                      {isSubscribed
-                        ? "Waiting for log messages..."
-                        : "No logs available"}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {filteredLogs.map((log) => (
-                    <LogEntryRow key={log.id} log={log} />
-                  ))}
-                </div>
-              )}
+          ) : (
+            <div>
+              {filteredLogs.map((log) => (
+                <LogEntryRow key={log.id} log={log} />
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );

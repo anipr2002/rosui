@@ -1,17 +1,97 @@
 'use client'
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useId, memo } from 'react'
 import { usePanelsStore } from '@/store/panels-store'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Upload, FileText, Clock, Radio, Loader2, X } from 'lucide-react'
+import { Upload, FileText, Clock, Radio, Loader2, X, FileVideo, FolderOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatTimestamp } from '@/lib/rosbag/mcap-reader'
+import { cn } from '@/lib/utils'
+import { motion, LazyMotion, domAnimation } from 'framer-motion'
+
+const ICON_VARIANTS = {
+  left: {
+    initial: { scale: 0.8, opacity: 0, x: 0, y: 0, rotate: 0 },
+    animate: { scale: 1, opacity: 1, x: 0, y: 0, rotate: -6, transition: { duration: 0.4, delay: 0.1 } },
+    hover: { x: -22, y: -5, rotate: -15, scale: 1.1, transition: { duration: 0.2 } },
+  },
+  center: {
+    initial: { scale: 0.8, opacity: 0 },
+    animate: { scale: 1, opacity: 1, transition: { duration: 0.4, delay: 0.2 } },
+    hover: { y: -10, scale: 1.15, transition: { duration: 0.2 } },
+  },
+  right: {
+    initial: { scale: 0.8, opacity: 0, x: 0, y: 0, rotate: 0 },
+    animate: { scale: 1, opacity: 1, x: 0, y: 0, rotate: 6, transition: { duration: 0.4, delay: 0.3 } },
+    hover: { x: 22, y: -5, rotate: 15, scale: 1.1, transition: { duration: 0.2 } },
+  },
+}
+
+const CONTENT_VARIANTS = {
+  initial: { y: 20, opacity: 0 },
+  animate: { y: 0, opacity: 1, transition: { duration: 0.4, delay: 0.4 } },
+}
+
+const BUTTON_VARIANTS = {
+  initial: { y: 20, opacity: 0 },
+  animate: { y: 0, opacity: 1, transition: { duration: 0.4, delay: 0.5 } },
+}
+
+const IconContainer = memo(
+  ({
+    children,
+    variant,
+    isDragging,
+  }: {
+    children: React.ReactNode
+    variant: "left" | "center" | "right"
+    isDragging: boolean
+  }) => (
+    <motion.div
+      variants={ICON_VARIANTS[variant]}
+      className={cn(
+        "w-14 h-14 rounded-xl flex items-center justify-center relative shadow-lg transition-all duration-300",
+        "bg-white border border-gray-200 group-hover:shadow-xl group-hover:border-gray-300",
+        isDragging && "border-violet-300 bg-violet-50 shadow-violet-200",
+      )}
+    >
+      <div
+        className={cn(
+          "transition-colors duration-300",
+          "text-gray-500 group-hover:text-violet-600",
+          isDragging && "text-violet-600",
+        )}
+      >
+        {children}
+      </div>
+    </motion.div>
+  ),
+)
+IconContainer.displayName = "IconContainer"
+
+const MultiIconDisplay = memo(({ isDragging }: { isDragging: boolean }) => (
+  <div className="flex justify-center isolate relative">
+    <IconContainer variant="left" isDragging={isDragging}>
+      <FileVideo className="h-6 w-6" />
+    </IconContainer>
+    <IconContainer variant="center" isDragging={isDragging}>
+      <Upload className="h-6 w-6" />
+    </IconContainer>
+    <IconContainer variant="right" isDragging={isDragging}>
+      <FolderOpen className="h-6 w-6" />
+    </IconContainer>
+  </div>
+))
+MultiIconDisplay.displayName = "MultiIconDisplay"
 
 export function FileUpload() {
   const { file, metadata, isLoading, error, loadFile, clearFile } = usePanelsStore()
   const [isDragging, setIsDragging] = useState(false)
+  const [hoveredButton, setHoveredButton] = useState(false)
+  const titleId = useId()
+  const descriptionId = useId()
 
   const handleFileSelect = useCallback(
     async (selectedFile: File) => {
@@ -69,6 +149,10 @@ export function FileUpload() {
     clearFile()
     toast.success('File cleared')
   }, [clearFile])
+
+  const handleUploadClick = () => {
+    document.getElementById('file-input')?.click()
+  }
 
   // Show loading state
   if (isLoading) {
@@ -174,76 +258,131 @@ export function FileUpload() {
     )
   }
 
-  // Show upload interface
+  // Show enhanced upload interface
   return (
-    <Card className="shadow-none pt-0 rounded-xl border border-gray-200">
-      <CardHeader className="bg-gray-50 border-gray-200 border-b rounded-t-xl pt-6">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 sm:gap-4 items-start">
-          <Upload className="h-5 w-5 mt-0.5 text-gray-600" />
-          <div className="min-w-0">
-            <CardTitle className="text-base text-gray-900">Upload MCAP File</CardTitle>
-            <CardDescription className="text-xs text-gray-600 mt-1">
-              Upload a rosbag file in MCAP format to visualize
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="px-6 py-4">
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging
-              ? 'border-indigo-500 bg-indigo-50'
-              : error
-              ? 'border-red-300 bg-red-50'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-          }`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-        >
-          <Upload className={`h-12 w-12 mx-auto mb-4 ${
-            isDragging ? 'text-indigo-500' : 'text-gray-400'
-          }`} />
-          
-          <p className="text-sm font-semibold text-gray-900 mb-2">
-            {isDragging ? 'Drop your file here' : 'Drop MCAP file here'}
-          </p>
-          
-          <p className="text-xs text-gray-500 mb-4">
-            or click to browse
-          </p>
-
-          <input
-            type="file"
-            accept=".mcap"
-            onChange={handleFileInputChange}
-            className="hidden"
-            id="file-input"
+    <LazyMotion features={domAnimation}>
+      <motion.section
+        role="region"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className={cn(
+          "group relative flex min-h-[400px] flex-col items-center justify-center rounded-xl p-8 transition-all duration-300 overflow-hidden",
+          "border-dashed border-2",
+          isDragging
+            ? "scale-[1.01] border-violet-400 bg-violet-50/50"
+            : "border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50/50",
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        initial="initial"
+        animate="animate"
+        whileHover="hover"
+      >
+        {/* Animated background particles */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+          <motion.div
+            className={cn(
+              "absolute left-1/4 top-1/4 h-32 w-32 rounded-full blur-3xl transition-all duration-700",
+              isDragging ? "bg-violet-400/20 scale-150" : "bg-violet-400/5 scale-100",
+            )}
+            animate={{
+              y: [0, -20, 0],
+              x: [0, 10, 0],
+            }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
-          
-          <label htmlFor="file-input">
-            <Button
-              type="button"
-              onClick={() => document.getElementById('file-input')?.click()}
-              className="bg-gray-200 border-gray-500 border-1 text-gray-500 hover:bg-gray-300 hover:text-gray-700"
+          <motion.div
+            className={cn(
+              "absolute bottom-1/4 right-1/4 h-24 w-24 rounded-full blur-3xl transition-all duration-700",
+              isDragging ? "bg-amber-400/20 scale-150" : "bg-amber-400/5 scale-100",
+            )}
+            animate={{
+              y: [0, 15, 0],
+              x: [0, -10, 0],
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        {/* Dot grid background on hover */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, rgb(156 163 175 / 0.15) 1px, transparent 1px)`,
+            backgroundSize: "24px 24px",
+          }}
+        />
+
+        {/* Main content */}
+        <div className="relative z-10 flex flex-col items-center text-center">
+          {/* Animated icons group */}
+          <div className="mb-8">
+            <MultiIconDisplay isDragging={isDragging} />
+          </div>
+
+          {/* Title and description */}
+          <motion.div variants={CONTENT_VARIANTS} className="space-y-2 mb-8">
+            <h2
+              id={titleId}
+              className={cn(
+                "text-xl font-semibold transition-colors duration-300",
+                isDragging ? "text-violet-700" : "text-gray-900",
+              )}
             >
-              Choose File
+              {isDragging ? "Drop your file here!" : "Upload MCAP File"}
+            </h2>
+            <p id={descriptionId} className="text-sm text-gray-500 max-w-sm leading-relaxed">
+              {isDragging
+                ? "Release to upload your MCAP file for visualization"
+                : "Upload a rosbag file in MCAP format to visualize and analyze"}
+            </p>
+          </motion.div>
+
+          {/* Action button */}
+          <motion.div variants={BUTTON_VARIANTS} className="flex flex-wrap items-center justify-center gap-3">
+            <input
+              type="file"
+              accept=".mcap"
+              onChange={handleFileInputChange}
+              className="hidden"
+              id="file-input"
+            />
+            <Button
+              variant="outline"
+              className={cn(
+                "group/btn relative overflow-hidden border-violet-200 px-5 transition-all duration-300 hover:border-violet-500 hover:bg-violet-50",
+                hoveredButton && "border-violet-500 bg-violet-50",
+              )}
+              onMouseEnter={() => setHoveredButton(true)}
+              onMouseLeave={() => setHoveredButton(false)}
+              onClick={handleUploadClick}
+            >
+              <span
+                className={cn(
+                  "absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-violet-100 to-transparent transition-transform duration-700",
+                  hoveredButton && "translate-x-full",
+                )}
+              />
+              <Upload className="mr-2 h-4 w-4 text-violet-600 transition-transform duration-300 group-hover/btn:-translate-y-0.5" />
+              <span className="relative text-violet-600">Choose File</span>
             </Button>
-          </label>
+          </motion.div>
+
+          {/* Helper text */}
+          <motion.p variants={BUTTON_VARIANTS} className="mt-6 text-xs text-gray-400">
+            Supports .mcap files • For local visualization
+          </motion.p>
 
           {error && (
-            <p className="text-xs text-red-600 mt-4">{error}</p>
+            <motion.p variants={BUTTON_VARIANTS} className="mt-2 text-xs text-red-600">
+              {error}
+            </motion.p>
           )}
         </div>
-
-        <div className="mt-4 text-xs text-gray-500">
-          <p className="font-medium mb-1">Supported format:</p>
-          <ul className="list-disc list-inside space-y-0.5">
-            <li>MCAP (.mcap) - ROS2 bag format</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+      </motion.section>
+    </LazyMotion>
   )
 }
 

@@ -6,7 +6,7 @@ import { messageTypeParser } from "@/lib/ros/messageTypeParser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Play, Square, AlertCircle } from "lucide-react";
+import { Send, Play, CirclePause, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface TopicPublishTabProps {
@@ -229,7 +229,7 @@ export function TopicPublishTab({
               variant="outline"
               className="w-full border-red-300 text-red-600 hover:bg-red-50"
             >
-              <Square className="mr-2 h-4 w-4" />
+              <CirclePause className="mr-2 h-4 w-4" />
               Stop Publishing
             </Button>
           </div>

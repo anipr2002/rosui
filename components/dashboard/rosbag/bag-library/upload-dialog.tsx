@@ -23,11 +23,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
-import { AlertCircle, CheckCircle2, Upload, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { uploadRosbagToS3, validateRosbagFile } from "@/lib/rosbag/rosbag-upload";
 import { useStorageQuota } from "@/hooks/use-storage-quota";
 import { formatFileSize } from "@/lib/rosbag/rosbag-upload";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface UploadDialogProps {
   open: boolean;
@@ -36,76 +37,148 @@ interface UploadDialogProps {
 }
 
 export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialogProps) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [projectId, setProjectId] = useState<string>("");
   const [saveToOrg, setSaveToOrg] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [uploadResults, setUploadResults] = useState<{
+    successful: number;
+    failed: number;
+    failedFiles: string[];
+  }>({ successful: 0, failed: 0, failedFiles: [] });
 
   const { storageInfo, canUploadFile } = useStorageQuota();
   const createFile = useMutation(api.rosbagFiles.create);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      const validation = validateRosbagFile(selectedFile);
-      if (!validation.valid) {
-        toast.error(validation.error);
-        return;
-      }
-      setFile(selectedFile);
+  const isProUser = storageInfo?.tier === "pro" || storageInfo?.tier === "team";
+  const isTeamUser = storageInfo?.tier === "team";
+
+  const handleFilesSelect = (selectedFiles: File[]) => {
+    // Check if user is pro for multiple files
+    if (selectedFiles.length > 1 && !isProUser) {
+      toast.error("Multiple file upload is available for Pro and Team users. Upgrade to upload multiple files at once.");
+      return;
     }
+
+    // Validate each file
+    const validFiles: File[] = [];
+    for (const file of selectedFiles) {
+      const validation = validateRosbagFile(file);
+      if (!validation.valid) {
+        toast.error(`${file.name}: ${validation.error}`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    // Check total size against remaining storage
+    const totalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
+    if (!storageInfo) {
+      toast.error("Unable to verify storage quota. Please try again.");
+      return;
+    }
+
+    if (totalSize > storageInfo.remaining) {
+      toast.error(
+        `Selected files (${formatFileSize(totalSize)}) exceed available storage (${formatFileSize(storageInfo.remaining)}). Please remove some files or upgrade your plan.`
+      );
+      return;
+    }
+
+    setFiles(validFiles);
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
 
-    // Check storage quota
-    if (!canUploadFile(file.size)) {
-      toast.error("Insufficient storage space for this file");
+    // Final storage check
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    if (!canUploadFile(totalSize)) {
+      toast.error("Insufficient storage space for these files");
       return;
     }
 
     setUploading(true);
     setProgress(0);
+    setCurrentFileIndex(0);
+    setUploadResults({ successful: 0, failed: 0, failedFiles: [] });
+
+    let successful = 0;
+    let failed = 0;
+    const failedFiles: string[] = [];
 
     try {
-      // Upload to S3
-      const result = await uploadRosbagToS3({
-        file,
-        metadata: {
-          duration: 0, // Will be updated after parsing
-          messageCount: 0,
-          topics: [],
-        },
-        projectId: projectId || undefined,
-        saveToOrganization: saveToOrg,
-        onProgress: setProgress,
-      });
+      // Upload files sequentially
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setCurrentFileIndex(i);
 
-      if (!result.success) {
-        throw new Error(result.error || "Upload failed");
+        try {
+          // Upload to S3
+          const result = await uploadRosbagToS3({
+            file,
+            metadata: {
+              duration: 0,
+              messageCount: 0,
+              topics: [],
+            },
+            projectId: projectId || undefined,
+            saveToOrganization: saveToOrg,
+            onProgress: (fileProgress) => {
+              // Calculate overall progress
+              const baseProgress = (i / files.length) * 100;
+              const fileProgressContribution = (fileProgress / files.length);
+              setProgress(Math.round(baseProgress + fileProgressContribution));
+            },
+          });
+
+          if (!result.success) {
+            throw new Error(result.error || "Upload failed");
+          }
+
+          // Create Convex record
+          await createFile({
+            fileName: file.name,
+            fileSize: file.size,
+            s3Key: result.s3Key!,
+            s3Url: result.s3Url!,
+            projectId: projectId ? (projectId as Id<"projects">) : undefined,
+            saveToOrganization: saveToOrg,
+            metadata: result.metadata!,
+          });
+
+          successful++;
+        } catch (error) {
+          console.error(`Error uploading ${file.name}:`, error);
+          failed++;
+          failedFiles.push(file.name);
+        }
       }
 
-      // Create Convex record
-      await createFile({
-        fileName: file.name,
-        fileSize: file.size,
-        s3Key: result.s3Key!,
-        s3Url: result.s3Url!,
-        projectId: projectId ? (projectId as Id<"projects">) : undefined,
-        saveToOrganization: saveToOrg,
-        metadata: result.metadata!,
-      });
-
+      setUploadResults({ successful, failed, failedFiles });
       setUploadComplete(true);
-      toast.success("File uploaded successfully!");
 
-      // Reset after 2 seconds
+      if (failed === 0) {
+        toast.success(
+          files.length === 1
+            ? "File uploaded successfully!"
+            : `All ${files.length} files uploaded successfully!`
+        );
+      } else if (successful === 0) {
+        toast.error("All uploads failed. Please try again.");
+      } else {
+        toast.warning(`${successful} file(s) uploaded, ${failed} failed.`);
+      }
+
+      // Reset after 3 seconds
       setTimeout(() => {
         handleClose();
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error("Upload error:", error);
       toast.error(error instanceof Error ? error.message : "Upload failed");
@@ -114,17 +187,19 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
   };
 
   const handleClose = () => {
-    setFile(null);
+    setFiles([]);
     setProjectId("");
     setSaveToOrg(false);
     setUploading(false);
     setProgress(0);
+    setCurrentFileIndex(0);
     setUploadComplete(false);
+    setUploadResults({ successful: 0, failed: 0, failedFiles: [] });
     onOpenChange(false);
   };
 
-  const isTeamUser = storageInfo?.tier === "team";
-  const canUpload = file && !uploading;
+  const canUpload = files.length > 0 && !uploading;
+  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -137,51 +212,27 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* File Picker */}
+          {/* File Upload with Drag & Drop */}
           <div className="space-y-2">
-            <Label htmlFor="file" className="text-sm font-medium">
-              Select MCAP File
+            <Label className="text-sm font-medium">
+              Select MCAP File{isProUser ? "(s)" : ""}
             </Label>
-            <Input
-              id="file"
-              type="file"
+            <FileUpload
+              onFilesSelect={handleFilesSelect}
+              selectedFiles={files}
               accept=".mcap"
-              onChange={handleFileSelect}
               disabled={uploading}
-              className="bg-white"
+              helpText="Drag and drop or choose file to upload"
+              multiple={isProUser}
             />
             <p className="text-xs text-gray-500">
               Only .mcap rosbag files are supported
+              {!isProUser && " • Upgrade to Pro for multiple file uploads"}
             </p>
           </div>
 
-          {/* File Info */}
-          {file && (
-            <div className="bg-gray-50 border rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="font-mono text-xs text-gray-900 truncate">
-                    {file.name}
-                  </p>
-                  <p className="font-mono text-xs text-gray-600 mt-1">
-                    {formatFileSize(file.size)}
-                  </p>
-                </div>
-                {!uploading && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFile(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Project Selection */}
-          {file && projects.length > 0 && (
+          {files.length > 0 && projects.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="project" className="text-sm font-medium">
                 Project (Optional)
@@ -207,7 +258,7 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
           )}
 
           {/* Team Storage Toggle */}
-          {file && isTeamUser && (
+          {files.length > 0 && isTeamUser && (
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="org-storage" className="text-sm font-medium">
@@ -227,9 +278,21 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
             </div>
           )}
 
+          {/* Storage Info */}
+          {files.length > 0 && storageInfo && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-900 font-medium">
+                Total size: {formatFileSize(totalSize)}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Remaining after upload: {formatFileSize(storageInfo.remaining - totalSize)}
+              </p>
+            </div>
+          )}
+
           {/* Storage Warning */}
-          {file && storageInfo && (
-            <StorageWarning fileSize={file.size} storageInfo={storageInfo} />
+          {files.length > 0 && storageInfo && (
+            <StorageWarning fileSize={totalSize} storageInfo={storageInfo} />
           )}
 
           {/* Upload Progress */}
@@ -237,22 +300,67 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
               <p className="text-xs text-gray-600 text-center">
-                Uploading... {progress}%
+                Uploading {files.length > 1 ? `file ${currentFileIndex + 1} of ${files.length}` : "file"}... {progress}%
               </p>
+              {files.length > 1 && (
+                <p className="text-xs text-gray-500 text-center">
+                  {files[currentFileIndex]?.name}
+                </p>
+              )}
             </div>
           )}
 
           {/* Success State */}
           {uploadComplete && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-green-900">
-                  Upload Complete!
+            <div className={`border rounded-lg p-4 flex items-start gap-3 ${
+              uploadResults.failed === 0 
+                ? "bg-green-50 border-green-200" 
+                : uploadResults.successful === 0 
+                ? "bg-red-50 border-red-200"
+                : "bg-amber-50 border-amber-200"
+            }`}>
+              <CheckCircle2 className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
+                uploadResults.failed === 0 
+                  ? "text-green-600" 
+                  : uploadResults.successful === 0 
+                  ? "text-red-600"
+                  : "text-amber-600"
+              }`} />
+              <div className="flex-1">
+                <p className={`text-sm font-semibold ${
+                  uploadResults.failed === 0 
+                    ? "text-green-900" 
+                    : uploadResults.successful === 0 
+                    ? "text-red-900"
+                    : "text-amber-900"
+                }`}>
+                  {uploadResults.failed === 0 
+                    ? "Upload Complete!" 
+                    : uploadResults.successful === 0 
+                    ? "Upload Failed"
+                    : "Partial Upload Complete"}
                 </p>
-                <p className="text-xs text-green-700 mt-1">
-                  Your file has been saved to cloud storage
+                <p className={`text-xs mt-1 ${
+                  uploadResults.failed === 0 
+                    ? "text-green-700" 
+                    : uploadResults.successful === 0 
+                    ? "text-red-700"
+                    : "text-amber-700"
+                }`}>
+                  {uploadResults.successful > 0 && `${uploadResults.successful} file(s) uploaded successfully`}
+                  {uploadResults.failed > 0 && uploadResults.successful > 0 && ", "}
+                  {uploadResults.failed > 0 && `${uploadResults.failed} failed`}
                 </p>
+                {uploadResults.failedFiles.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-medium text-red-800">Failed files:</p>
+                    <ul className="text-xs text-red-700 mt-1 space-y-0.5">
+                      {uploadResults.failedFiles.map((fileName, idx) => (
+                        <li key={idx} className="truncate">• {fileName}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -265,7 +373,7 @@ export function UploadDialog({ open, onOpenChange, projects = [] }: UploadDialog
               className="bg-green-500 hover:bg-green-600 text-white flex-1"
             >
               <Upload className="h-4 w-4 mr-2" />
-              Upload to S3
+              Upload {files.length > 1 ? `${files.length} Files` : "to S3"}
             </Button>
             <Button
               variant="outline"

@@ -38,9 +38,17 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
+        <head>
+        <script
+          async
+          crossOrigin="anonymous"
+          src="https://tweakcn.com/live-preview.min.js"
+        />
+      </head>
         <body
           className={`${montreal.variable} antialiased overflow-x-hidden flex flex-col min-h-screen`}
         >
+
           <RootProvider
             dir="ltr"
             theme={{

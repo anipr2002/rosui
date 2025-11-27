@@ -39,6 +39,9 @@ export const useRQTGraphStore = create<RQTGraphState>((set, get) => ({
   lastUpdate: 0,
 
   fetchGraphData: async () => {
+    const { isLoading } = get()
+    if (isLoading) return
+
     const ros = useRosStore.getState().ros
     if (!ros) {
       toast.error('ROS connection not available')
@@ -180,7 +183,6 @@ export const useRQTGraphStore = create<RQTGraphState>((set, get) => ({
         lastUpdate: Date.now()
       })
 
-      toast.success('Graph data refreshed successfully')
       console.log(`Loaded ${nodeInfos.length} nodes, ${topicInfos.length} topics, ${connections.length} connections`)
     } catch (error) {
       console.error('Failed to fetch graph data:', error)

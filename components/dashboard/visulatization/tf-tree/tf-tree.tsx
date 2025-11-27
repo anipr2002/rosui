@@ -164,7 +164,9 @@ function TFTreeInner({
     setEdges(layoutedEdges);
 
     // Fit view after layout if React Flow is ready
-    if (isReactFlowReady && reactFlowInstance.current) {
+    // Only fit view if this is the first layout (nodes were empty before)
+    // This prevents resetting the view when data updates
+    if (isReactFlowReady && reactFlowInstance.current && nodes.length === 0 && layoutedNodes.length > 0) {
       requestAnimationFrame(() => {
         setTimeout(() => {
           reactFlowInstance.current?.fitView({ padding: 0.2, duration: 200 });

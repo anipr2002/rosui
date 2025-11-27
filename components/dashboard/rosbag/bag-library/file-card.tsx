@@ -27,7 +27,7 @@ import {
   Eye,
   Loader2,
 } from "lucide-react";
-import { formatFileSize } from "@/lib/rosbag/rosbag-upload";
+import { formatFileSize, deleteRosbagFile } from "@/lib/rosbag/rosbag-upload";
 import { toast } from "sonner";
 import { usePanelsStore } from "@/store/panels-store";
 
@@ -65,11 +65,19 @@ export function FileCard({ file, project, viewMode = "grid", onMoveClick }: File
 
     setDeleting(true);
     try {
-      await deleteFile({ fileId: file._id });
-      toast.success("File deleted successfully!");
+      const result = await deleteRosbagFile(file.s3Key, async () => {
+        await deleteFile({ fileId: file._id });
+      });
+
+      if (result.success) {
+        toast.success("File deleted successfully!");
+      } else {
+        toast.error(result.error || "Failed to delete file");
+      }
     } catch (error) {
       console.error("Delete error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to delete file");
+    } finally {
       setDeleting(false);
     }
   };

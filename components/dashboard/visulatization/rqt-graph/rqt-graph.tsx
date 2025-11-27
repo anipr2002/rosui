@@ -19,22 +19,22 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { useRQTGraphStore } from "@/store/rqt-graph-store";
 import { useRosStore } from "@/store/ros-store";
-import {
-  buildGraphStructure,
-  filterGraphBySearch,
-} from "@/lib/rqt-reactflow/rqt-graph-builder";
-import { convertToReactFlow } from "@/lib/rqt-reactflow/rqt-graph-to-reactflow";
-import { getLayoutedElements } from "@/lib/rqt-reactflow/layout-rqt-graph";
 import type { LayoutDirection } from "@/lib/rqt-reactflow/layout-rqt-graph";
 import GraphNode from "./graph-node";
 import TopicNode from "./topic-node";
 import { RQTGraphControls } from "./rqt-graph-controls";
 import { RQTGraphDetailsPanel } from "./rqt-graph-details-panel";
 import type { RQTNodeData } from "@/lib/rqt-reactflow/rqt-graph-to-reactflow";
-import { AlertCircle, ArrowRight, Link, Loader2, Network } from "lucide-react";
+import { AlertCircle, ArrowRight, Link, Network } from "lucide-react";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SpinnerCustom } from "@/components/ui/spinner";
+import type { GraphWorkerInput, GraphWorkerOutput } from "@/lib/workers/graph-processing.worker";
+
+const nodeTypes = {
+  rosNode: GraphNode,
+  rosTopic: TopicNode,
+};
 
 export interface RQTGraphProps {
   searchQuery?: string;
@@ -59,22 +59,14 @@ export function RQTGraph({
   onShowTopicsChange,
   onLayoutDirectionChange,
 }: RQTGraphProps = {}) {
-  const nodeTypes = useMemo(
-    () => ({
-      rosNode: GraphNode,
-      rosTopic: TopicNode,
-    }),
-    []
-  );
-
   const { status } = useRosStore();
-  const {
-    nodes: graphNodes,
-    topics,
-    connections,
-    isLoading,
-    fetchGraphData,
-  } = useRQTGraphStore();
+  
+  // Use selectors to prevent unnecessary re-renders
+  const graphNodes = useRQTGraphStore((state) => state.nodes);
+  const topics = useRQTGraphStore((state) => state.topics);
+  const connections = useRQTGraphStore((state) => state.connections);
+  const isLoading = useRQTGraphStore((state) => state.isLoading);
+  const fetchGraphData = useRQTGraphStore((state) => state.fetchGraphData);
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -115,36 +107,80 @@ export function RQTGraph({
     else setInternalLayoutDirection(direction);
   };
 
-  const [layoutCounter, setLayoutCounter] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
+  const workerRef = useRef<Worker | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [topicCount, setTopicCount] = useState(0);
+  
+  // Track if we have initiated a fetch to prevent loops
+  const hasFetchedRef = useRef(false);
 
-  // Fetch graph data on mount
+  // Initialize worker
   useEffect(() => {
-    if (status === "connected") {
+    workerRef.current = new Worker(
+      new URL("@/lib/workers/graph-processing.worker.ts", import.meta.url)
+    );
+
+    workerRef.current.onmessage = (event: MessageEvent<GraphWorkerOutput>) => {
+      const { type, payload } = event.data;
+
+      if (type === "GRAPH_PROCESSED") {
+        setNodes(payload.nodes);
+        setEdges(payload.edges);
+        setNodeCount(payload.nodeCount);
+        setTopicCount(payload.topicCount);
+        setIsProcessing(false);
+
+        // Fit view after layout update
+        setTimeout(() => {
+          fitView({ padding: 0.2, duration: 200 });
+        }, 50);
+      } else if (type === "ERROR") {
+        console.error("Worker error:", payload.message);
+        setIsProcessing(false);
+      }
+    };
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, [setNodes, setEdges, fitView]);
+
+  // Fetch graph data on mount or connection
+  useEffect(() => {
+    if (status === "connected" && !hasFetchedRef.current) {
       fetchGraphData();
+      hasFetchedRef.current = true;
     }
   }, [status, fetchGraphData]);
 
-  // Build graph structure
-  const graphStructure = useMemo(() => {
-    if (graphNodes.length === 0 && topics.length === 0) return null;
-
-    const structure = buildGraphStructure(
-      graphNodes,
-      topics,
-      connections,
-      filterSystemNodes,
-      showTopics
-    );
-
-    // Apply search filter
-    if (searchQuery.trim()) {
-      return filterGraphBySearch(structure, searchQuery);
+  // Send data to worker when it changes
+  useEffect(() => {
+    if (!workerRef.current) return;
+    if (graphNodes.length === 0 && topics.length === 0) {
+        setNodes([]);
+        setEdges([]);
+        return;
     }
 
-    return structure;
+    setIsProcessing(true);
+    const message: GraphWorkerInput = {
+      type: "PROCESS_GRAPH",
+      payload: {
+        nodes: graphNodes,
+        topics,
+        connections,
+        filterSystemNodes,
+        showTopics,
+        searchQuery,
+        layoutDirection,
+      },
+    };
+    workerRef.current.postMessage(message);
+
   }, [
     graphNodes,
     topics,
@@ -152,35 +188,8 @@ export function RQTGraph({
     filterSystemNodes,
     showTopics,
     searchQuery,
-    layoutCounter,
+    layoutDirection,
   ]);
-
-  // Update ReactFlow nodes and edges
-  useEffect(() => {
-    if (!graphStructure) {
-      setNodes([]);
-      setEdges([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const { nodes: rawNodes, edges: rawEdges } =
-        convertToReactFlow(graphStructure);
-
-      const { nodes: layoutedNodes, edges: layoutedEdges } =
-        getLayoutedElements(rawNodes, rawEdges, layoutDirection);
-
-      setNodes(layoutedNodes);
-      setEdges(layoutedEdges);
-
-      // Fit view after layout
-      setTimeout(() => {
-        fitView({ padding: 0.2, duration: 200 });
-      }, 50);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [graphStructure, layoutDirection, setNodes, setEdges, fitView]);
 
   // Handle node/topic click
   const onNodeClick = useCallback((_event: React.MouseEvent, node: any) => {
@@ -194,7 +203,6 @@ export function RQTGraph({
 
   const handleRefresh = useCallback(() => {
     fetchGraphData();
-    setLayoutCounter((prev) => prev + 1);
   }, [fetchGraphData]);
 
   const handleFitView = useCallback(() => {
@@ -262,9 +270,9 @@ export function RQTGraph({
 
   // Empty state
   if (
-    !graphStructure ||
-    (graphStructure.nodeElements.size === 0 &&
-      graphStructure.topicElements.size === 0)
+    !isProcessing &&
+    nodeCount === 0 &&
+    topicCount === 0
   ) {
     return (
       <div className="space-y-4 h-full flex flex-col">
@@ -282,7 +290,7 @@ export function RQTGraph({
             onShowTopicsChange={handleShowTopicsChange}
             layoutDirection={layoutDirection}
             onLayoutDirectionChange={handleLayoutDirectionChange}
-            isLoading={isLoading}
+            isLoading={isLoading || isProcessing}
           />
         )}
 
@@ -306,8 +314,8 @@ export function RQTGraph({
     <div className="space-y-4 h-full flex flex-col">
       {!hideControls && (
         <RQTGraphControls
-          nodeCount={graphStructure.nodeElements.size}
-          topicCount={graphStructure.topicElements.size}
+          nodeCount={nodeCount}
+          topicCount={topicCount}
           onRefresh={handleRefresh}
           onFitView={handleFitView}
           searchQuery={searchQuery}
@@ -318,7 +326,7 @@ export function RQTGraph({
           onShowTopicsChange={handleShowTopicsChange}
           layoutDirection={layoutDirection}
           onLayoutDirectionChange={handleLayoutDirectionChange}
-          isLoading={isLoading}
+          isLoading={isLoading || isProcessing}
           onFullscreen={handleFullscreen}
           isFullscreen={isFullscreen}
         />
@@ -328,8 +336,8 @@ export function RQTGraph({
         {isFullscreen && (
           <div className="p-4 border-b border-teal-200 bg-teal-50">
             <RQTGraphControls
-              nodeCount={graphStructure.nodeElements.size}
-              topicCount={graphStructure.topicElements.size}
+              nodeCount={nodeCount}
+              topicCount={topicCount}
               onRefresh={handleRefresh}
               onFitView={handleFitView}
               searchQuery={searchQuery}
@@ -340,7 +348,7 @@ export function RQTGraph({
               onShowTopicsChange={handleShowTopicsChange}
               layoutDirection={layoutDirection}
               onLayoutDirectionChange={handleLayoutDirectionChange}
-              isLoading={isLoading}
+              isLoading={isLoading || isProcessing}
               onFullscreen={handleFullscreen}
               isFullscreen={isFullscreen}
             />
@@ -376,7 +384,6 @@ export function RQTGraph({
                 onNodeClick={onNodeClick}
                 onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
-                fitView
                 minZoom={0.05}
                 maxZoom={1.5}
                 defaultEdgeOptions={{

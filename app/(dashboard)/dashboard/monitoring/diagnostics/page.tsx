@@ -11,6 +11,7 @@ import {
 } from "@/components/dashboard/monitoring/diagnostics";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { RosConnectionRequired } from "@/components/dashboard/misc/ros-connection-required";
 
 export default function DiagnosticsPage() {
   const { status: connectionStatus, ros } = useRosStore();
@@ -23,6 +24,16 @@ export default function DiagnosticsPage() {
   } = useDiagnosticsStore();
 
   const nodeNames = getAllNodeNames();
+
+  // Not connected state
+  if (connectionStatus !== "connected") {
+    return (
+      <RosConnectionRequired
+        title="Diagnostics"
+        description="Connect to ROS to monitor system health, node status, and diagnostics."
+      />
+    );
+  }
 
   // Subscribe to diagnostics when ROS is connected
   useEffect(() => {
@@ -87,9 +98,7 @@ export default function DiagnosticsPage() {
                 No Diagnostics Available
               </div>
               <div className="text-sm text-gray-500">
-                {connectionStatus === "connected"
-                  ? "No diagnostic messages received yet. Make sure diagnostic topics are active."
-                  : "Connect to ROS to start receiving diagnostics."}
+                No diagnostic messages received yet. Make sure diagnostic topics are active.
               </div>
             </div>
           </CardContent>

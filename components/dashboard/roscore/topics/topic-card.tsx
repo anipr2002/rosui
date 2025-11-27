@@ -150,7 +150,7 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
 
   return (
     <Card
-      className={`shadow-none pt-0 rounded-xl ${colors.border}`}
+      className={`shadow-none pt-0 rounded-xl ${colors.border} bg-white`}
       style={colors.customBorderStyle}
     >
       <CardHeader
@@ -205,7 +205,7 @@ export function TopicCard({ topicName, topicType }: TopicCardProps) {
         </TooltipProvider>
       </CardHeader>
 
-      <CardContent className="px-6 py-4">
+      <CardContent className="px-6 py-4 bg-white">
         <Tabs defaultValue="info" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info" className="text-xs">

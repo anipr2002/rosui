@@ -5,24 +5,23 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useStorageQuota } from "@/hooks/use-storage-quota";
-import { StorageQuotaDisplay } from "@/components/dashboard/rosbag/bag-library/storage-quota-display";
 import { UploadDialog } from "@/components/dashboard/rosbag/bag-library/upload-dialog";
 import { CreateProjectDialog } from "@/components/dashboard/rosbag/bag-library/create-project-dialog";
 import { MoveFileDialog } from "@/components/dashboard/rosbag/bag-library/move-file-dialog";
 import { FileCard } from "@/components/dashboard/rosbag/bag-library/file-card";
 import { ProjectCard } from "@/components/dashboard/rosbag/bag-library/project-card";
-import { ActionBar } from "@/components/dashboard/rosbag/bag-library/action-bar";
+import { LibraryHeader } from "@/components/dashboard/rosbag/bag-library/library-header";
 import {
   FreeUserEmptyState,
-  PaidUserEmptyState,
-  NoProjectsEmptyState,
-  NoSharedFilesEmptyState,
 } from "@/components/dashboard/rosbag/bag-library/empty-states";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import {
+  LibraryEmptyState,
+  FolderEmptyState,
+  SharedEmptyState,
+} from "@/components/dashboard/rosbag/bag-library/empty-states-library";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Database, FileArchive, Folder, Users } from "lucide-react";
-import { getTierBadgeColor, getTierDisplayName } from "@/lib/subscription-utils";
+import { Grid3x3, List } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function BagLibraryPage() {
   const { storageInfo, isLoading: storageLoading } = useStorageQuota();
@@ -30,8 +29,9 @@ export default function BagLibraryPage() {
   const sharedFiles = useQuery(api.rosbagFiles.listShared, {});
   const projects = useQuery(api.projects.list, { includeShared: true });
 
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [activeTab, setActiveTab] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false);
   const [moveFileDialogOpen, setMoveFileDialogOpen] = useState(false);
@@ -54,88 +54,103 @@ export default function BagLibraryPage() {
     projects?.map((p) => [p._id, p]) || []
   );
 
+  // Filter logic
+  const filteredFiles = files?.filter((f) =>
+    f.fileName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredProjects = projects?.filter((p) =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredSharedFiles = sharedFiles?.filter((f) =>
+    f.fileName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="w-full max-w-7xl mx-auto py-8">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Bag Library</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your rosbag files and projects in the cloud
-        </p>
-      </div>
-
-      {/* Storage Quota Card */}
-      <Card className="shadow-none pt-0 rounded-xl border border-indigo-300 mb-6">
-        <CardHeader className="bg-indigo-50 border-indigo-300 border-b rounded-t-xl pt-6">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 sm:gap-4 items-start">
-            <Database className="h-5 w-5 mt-0.5 text-indigo-600" />
-
-            <div className="min-w-0">
-              <h3 className="text-base text-indigo-900 font-semibold">
-                Storage Usage
-              </h3>
-              <p className="text-xs text-indigo-800 mt-1">
-                Track your cloud storage usage and quota
-              </p>
-            </div>
-
-            {storageInfo && (
-              <Badge
-                className={`${getTierBadgeColor(storageInfo.tier).bg} ${getTierBadgeColor(storageInfo.tier).text} ${getTierBadgeColor(storageInfo.tier).border} border text-xs`}
-              >
-                {getTierDisplayName(storageInfo.tier)}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="px-6 py-4">
-          <StorageQuotaDisplay />
-        </CardContent>
-      </Card>
-
-      {/* Action Bar */}
-      {!isFreeUser && (
-        <ActionBar
-          onUploadClick={() => setUploadDialogOpen(true)}
-          onCreateProjectClick={() => setCreateProjectDialogOpen(true)}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-        />
-      )}
+    <div className="w-full px-4 mx-auto py-8 max-w-7xl">
+      <LibraryHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onUploadClick={() => setUploadDialogOpen(true)}
+        onCreateProjectClick={() => setCreateProjectDialogOpen(true)}
+        isFreeUser={isFreeUser}
+      />
 
       {/* Main Content Area */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all" className="text-xs">
-            <FileArchive className="h-3 w-3 mr-1" />
-            All Files
-          </TabsTrigger>
-          <TabsTrigger value="projects" className="text-xs">
-            <Folder className="h-3 w-3 mr-1" />
-            Projects
-          </TabsTrigger>
-          <TabsTrigger value="shared" className="text-xs">
-            <Users className="h-3 w-3 mr-1" />
-            Shared
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between mb-6">
+          <TabsList className="bg-transparent p-0 h-auto border-b w-full justify-start rounded-none space-x-6">
+            <TabsTrigger
+              value="all"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-sm text-muted-foreground data-[state=active]:text-indigo-900"
+            >
+              Videos
+            </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-sm text-muted-foreground data-[state=active]:text-indigo-900"
+            >
+              Folders
+            </TabsTrigger>
+            <TabsTrigger
+              value="shared"
+              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none px-0 pb-2 text-sm text-muted-foreground data-[state=active]:text-indigo-900"
+            >
+              Shared
+            </TabsTrigger>
+          </TabsList>
+
+          {!isFreeUser && (
+            <div className="flex items-center gap-1 border rounded-lg p-1 ml-4 bg-white">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className={`h-7 w-7 p-0 ${viewMode === "grid" ? "bg-gray-100" : ""}`}
+              >
+                <Grid3x3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className={`h-7 w-7 p-0 ${viewMode === "list" ? "bg-gray-100" : ""}`}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
 
         {/* All Files Tab */}
-        <TabsContent value="all" className="mt-4">
+        <TabsContent value="all" className="mt-0">
           {isFreeUser ? (
             <FreeUserEmptyState />
-          ) : files && files.length === 0 ? (
-            <PaidUserEmptyState onUploadClick={() => setUploadDialogOpen(true)} />
+          ) : filteredFiles && filteredFiles.length === 0 ? (
+            searchQuery ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No files found matching "{searchQuery}"
+              </div>
+            ) : (
+              <LibraryEmptyState 
+                onUpload={() => setUploadDialogOpen(true)}
+                onRecord={() => {
+                  // Navigate to record page
+                  window.location.href = '/dashboard/rosbag/record';
+                }}
+              />
+            )
           ) : (
             <div
               className={
                 viewMode === "grid"
                   ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                  : "space-y-3"
+                  : "space-y-2"
               }
             >
-              {files?.map((file) => (
+              {filteredFiles?.map((file) => (
                 <FileCard
                   key={file._id}
                   file={file}
@@ -149,43 +164,67 @@ export default function BagLibraryPage() {
         </TabsContent>
 
         {/* Projects Tab */}
-        <TabsContent value="projects" className="mt-4">
+        <TabsContent value="projects" className="mt-0">
           {isFreeUser ? (
             <FreeUserEmptyState />
-          ) : projects && projects.length === 0 ? (
-            <NoProjectsEmptyState onCreateClick={() => setCreateProjectDialogOpen(true)} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects?.map((project) => (
-                <ProjectCard
-                  key={project._id}
-                  project={project}
-                  fileCount={files?.filter((f) => f.projectId === project._id).length || 0}
-                  onClick={() => {
-                    // TODO: Navigate to project detail view
-                    console.log("Navigate to project:", project._id);
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Shared Tab */}
-        <TabsContent value="shared" className="mt-4">
-          {isFreeUser ? (
-            <FreeUserEmptyState />
-          ) : sharedFiles && sharedFiles.length === 0 ? (
-            <NoSharedFilesEmptyState />
+          ) : filteredProjects && filteredProjects.length === 0 ? (
+            searchQuery ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No projects found matching "{searchQuery}"
+              </div>
+            ) : (
+              <FolderEmptyState onCreateClick={() => setCreateProjectDialogOpen(true)} />
+            )
           ) : (
             <div
               className={
                 viewMode === "grid"
                   ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                  : "space-y-3"
+                  : "space-y-2"
               }
             >
-              {sharedFiles?.map((file) => (
+              {filteredProjects?.map((project) => {
+                const projectFiles = files?.filter((f) => f.projectId === project._id) || [];
+                return (
+                  <ProjectCard
+                    key={project._id}
+                    project={project}
+                    fileCount={projectFiles.length}
+                    files={projectFiles}
+                    viewMode={viewMode}
+                    onClick={() => {
+                      // TODO: Navigate to project detail view
+                      console.log("Navigate to project:", project._id);
+                    }}
+                    onMoveFile={handleMoveFile}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Shared Tab */}
+        <TabsContent value="shared" className="mt-0">
+          {isFreeUser ? (
+            <FreeUserEmptyState />
+          ) : filteredSharedFiles && filteredSharedFiles.length === 0 ? (
+            searchQuery ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No shared files found matching "{searchQuery}"
+              </div>
+            ) : (
+              <SharedEmptyState />
+            )
+          ) : (
+            <div
+              className={
+                viewMode === "grid"
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  : "space-y-2"
+              }
+            >
+              {filteredSharedFiles?.map((file) => (
                 <FileCard
                   key={file._id}
                   file={file}
