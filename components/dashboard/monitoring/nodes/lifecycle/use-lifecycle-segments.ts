@@ -4,6 +4,8 @@ import type {
   LifecycleTransition,
   TransitionEvent
 } from '@/store/lifecycle-nodes-store'
+export type { LifecycleState } from '@/store/lifecycle-nodes-store'
+
 
 // Primary state colors (like Foxglove's Start State row)
 export const PRIMARY_STATE_COLORS: Record<LifecycleState, {

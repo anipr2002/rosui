@@ -15,7 +15,6 @@ import {
   useLifecycleSegments,
   PRIMARY_STATE_COLORS,
   TRANSITION_STATE_COLORS,
-  type LifecycleState as HookLifecycleState,
   type TransitionState
 } from './use-lifecycle-segments'
 
@@ -211,7 +210,7 @@ export function LifecycleTimeline({
           <div className="space-y-1">
             <p className="text-[10px] font-medium text-gray-500 uppercase">Primary States</p>
             <div className="flex flex-wrap gap-2">
-              {(['unconfigured', 'inactive', 'active', 'finalized'] as HookLifecycleState[]).map((state) => {
+              {(['unconfigured', 'inactive', 'active', 'finalized'] as LifecycleState[]).map((state) => {
                 const colors = PRIMARY_STATE_COLORS[state]
                 return (
                   <div key={state} className="flex items-center gap-1">
