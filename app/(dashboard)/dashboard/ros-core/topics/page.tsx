@@ -63,7 +63,7 @@ function TopicsPage() {
             View and manage your ROS topics
           </p>
         </div>
-<TopicsEmptyState />
+          <TopicsEmptyState />
       </div>
     );
   }

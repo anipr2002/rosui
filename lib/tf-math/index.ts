@@ -421,3 +421,4 @@ export function translationMagnitude(t: Vector3): number {
   return Math.sqrt(t.x * t.x + t.y * t.y + t.z * t.z)
 }
 
+

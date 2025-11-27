@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useDashboardPagesStore } from '@/store/dashboard-pages-store'
 import { useTopicsStore } from '@/store/topic-store'
 import type { Panel } from '@/store/dashboard-pages-store'
-import type { LivePlotConfig } from '@/components/dashboard/advanced/layouts/panels/plot/types'
+import type { LivePlotConfig } from '@/components/dashboard/visulatization/layouts/panels/plot/types'
 
 /**
  * Extract topics needed by a panel

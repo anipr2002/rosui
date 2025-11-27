@@ -86,6 +86,10 @@ const sidebarData = {
           title: "TF Transforms",
           url: "/dashboard/visualization/tf-tree",
         },
+        {
+          title: "Live Dashboard",
+          url: "/dashboard/visualization/live-dashboard",
+        },
       ],
     },
     {
@@ -112,7 +116,7 @@ const sidebarData = {
       ],
     },
     {
-      title: "Monitoring",
+      title: "Health & Logs",
       url: "#",
       icon: Bot,
       items: [
@@ -125,11 +129,11 @@ const sidebarData = {
           url: "/dashboard/monitoring/logs",
         },
         {
-          title: "Performance",
-          url: "#",
+          title: "Nodes",
+          url: "/dashboard/monitoring/nodes",
         },
         {
-          title: "Nodes",
+          title: "Performance",
           url: "#",
         },
       ],
@@ -149,25 +153,25 @@ const sidebarData = {
         },
       ],
     },
-    {
-      title: "Advanced",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "Dashboards",
-          url: "/dashboard/advanced/dashboards",
-        },
-        {
-          title: "Fleet Manager",
-          url: "#",
-        },
-        {
-          title: "Custom Widgets",
-          url: "#",
-        },
-      ],
-    },
+    // {
+    //   title: "Advanced",
+    //   url: "#",
+    //   icon: Settings2,
+    //   items: [
+    //     {
+    //       title: "Dashboards",
+    //       url: "/dashboard/advanced/dashboards",
+    //     },
+    //     {
+    //       title: "Fleet Manager",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Custom Widgets",
+    //       url: "#",
+    //     },
+    //   ],
+    // },
   ],
   navSecondary: [
     {
@@ -219,9 +223,9 @@ export function AppSidebar({ docsNav = [], ...props }: AppSidebarProps) {
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg relative">
                   <Image src="/logo.svg" alt="ROSUI" width={16} height={16} />
                   {isProUser && (
-                    <Badge 
-                      variant="default" 
-                      className="absolute -top-2 -right-2.5 px-1 py-0 text-[10px] h-3 bg-gradient-to-r from-amber-500 to-orange-500 border-none" 
+                    <Badge
+                      variant="default"
+                      className="absolute -top-2 -right-2.5 px-1 py-0 text-[10px] h-3 bg-gradient-to-r from-amber-500 to-orange-500 border-none"
                     >
                       Pro
                     </Badge>

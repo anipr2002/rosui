@@ -31,3 +31,6 @@ export type { LogLevel, LogEntry, LogMessage, FilterState } from './log-store'
 export { useDashboardPagesStore } from './dashboard-pages-store'
 export type { DashboardPage, Panel as DashboardPanel, LayoutType } from './dashboard-pages-store'
 
+export { useLifecycleNodesStore, TRANSITION_IDS, STATE_IDS, AVAILABLE_TRANSITIONS } from './lifecycle-nodes-store'
+export type { LifecycleState, LifecycleTransition, TransitionEvent, NodeDetails, LifecycleNodeInfo } from './lifecycle-nodes-store'
+

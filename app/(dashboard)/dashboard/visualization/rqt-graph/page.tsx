@@ -26,8 +26,8 @@ function RQTGraphPage() {
 
   // RQT Graph visualization
   return (
-    <div className="w-full px-4 mx-auto py-8">
-      <div className="mb-8">
+    <div className="w-full px-4 mx-auto flex flex-col" style={{ height: 'calc(100vh - 64px - 20px)' }}>
+      <div className="mb-4 shrink-0 pt-8">
         <h1 className="text-3xl font-bold tracking-tight">RQT Graph</h1>
         <p className="text-muted-foreground mt-2">
           Visualize your ROS computation graph in real-time
@@ -35,7 +35,9 @@ function RQTGraphPage() {
       </div>
 
       <ReactFlowProvider>
-        <RQTGraph />
+        <div className="flex-1 min-h-0 pb-4">
+          <RQTGraph />
+        </div>
       </ReactFlowProvider>
     </div>
   );
