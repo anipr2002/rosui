@@ -1,9 +1,7 @@
-"use client";
-
 import React from "react";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -11,292 +9,360 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Activity,
   Play,
-  Plus,
-  Save,
+  Pause,
   Square,
-  Trash2,
-  Upload,
-  Wifi,
-  Undo2,
-  Redo2,
-  Download,
+  Radio,
+  CircleOff,
+  RotateCcw,
+  Zap,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  Loader2,
 } from "lucide-react";
-import type { WorkflowNodeType } from "./types";
+import { ExecutionState } from "./store/execution-store";
+import { cn } from "@/lib/utils";
 
 interface WorkflowToolbarProps {
-  onAddNode: (type: WorkflowNodeType) => void;
+  executionState: ExecutionState;
+  triggersArmed: boolean;
+  hasNodes: boolean;
   onStart: () => void;
+  onPause: () => void;
+  onResume: () => void;
   onStop: () => void;
-  onSave: () => void;
-  onLoad: () => void;
-  onClear: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  isRunning: boolean;
-  isConnected: boolean;
-  nodeCount: number;
-  edgeCount: number;
-  lastSaved?: number;
+  onArm: () => void;
+  onDisarm: () => void;
+  onReset: () => void;
 }
 
-export function WorkflowToolbar({
-  onAddNode,
+const WorkflowToolbar = ({
+  executionState,
+  triggersArmed,
+  hasNodes,
   onStart,
+  onPause,
+  onResume,
   onStop,
-  onSave,
-  onLoad,
-  onClear,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
-  isRunning,
-  isConnected,
-  nodeCount,
-  edgeCount,
-  lastSaved,
-}: WorkflowToolbarProps) {
-  const handleExport = () => {
-    const data = localStorage.getItem("rosui.workflow.dataProcessing");
-    if (!data) {
-      return;
+  onArm,
+  onDisarm,
+  onReset,
+}: WorkflowToolbarProps) => {
+  const isRunning = executionState === "running";
+  const isPaused = executionState === "paused";
+  const isIdle = executionState === "idle" || executionState === "stopped";
+
+  const getStatusColor = () => {
+    switch (executionState) {
+      case "running":
+        return "bg-yellow-500";
+      case "paused":
+        return "bg-orange-500";
+      case "stopped":
+        return "bg-red-500";
+      default:
+        return "bg-gray-400";
     }
-    const parsed = JSON.parse(data);
-    const exportData = {
-      ...parsed,
-      version: "1.0",
-      description: "ROS Workflow Export",
-    };
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `workflow-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
-  const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target?.result as string);
-          localStorage.setItem(
-            "rosui.workflow.dataProcessing",
-            JSON.stringify(data)
-          );
-          onLoad();
-        } catch (error) {
-          console.error("Failed to import workflow:", error);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
+  const getStatusText = () => {
+    switch (executionState) {
+      case "running":
+        return "Running";
+      case "paused":
+        return "Paused";
+      case "stopped":
+        return "Stopped";
+      default:
+        return "Ready";
+    }
   };
+
   return (
-    <Card className="shadow-none pt-0 rounded-xl border border-teal-200">
-      <CardHeader className="bg-teal-50 border-teal-200 border-b rounded-t-xl pt-6">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3 sm:gap-4">
-          <Activity className="h-5 w-5 text-teal-600 mt-0.5" />
-          <div className="flex flex-col">
-            <h2 className="text-base font-semibold text-teal-900">
-              Data workflow controls
-            </h2>
-            <p className="text-xs text-teal-800">
-              Add nodes, connect ROS topics, and orchestrate processing
-              pipelines
-            </p>
-          </div>
-          <Badge
-            className={`justify-self-end text-xs ${
-              isConnected
-                ? "bg-green-100 text-green-700 border-green-200"
-                : "bg-amber-100 text-amber-700 border-amber-200"
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <Wifi className="h-3.5 w-3.5" />
-              {isConnected ? "rosbridge connected" : "connection required"}
-            </span>
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-6 py-4 space-y-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-              onClick={() => onAddNode("input")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Input node
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
-              onClick={() => onAddNode("process")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Process node
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-              onClick={() => onAddNode("output")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Output node
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-              onClick={() => onAddNode("humanIntervention")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Human Intervention
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 justify-start lg:justify-end">
-            {isRunning ? (
+    <TooltipProvider>
+      <div className="flex items-center gap-2 p-2 bg-white/90 backdrop-blur-sm border rounded-lg shadow-sm">
+        {/* Execution Controls */}
+        <div className="flex items-center gap-1">
+          {/* Play/Resume Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
-                type="button"
+                variant={isIdle ? "default" : "outline"}
+                size="sm"
+                onClick={isPaused ? onResume : onStart}
+                disabled={isRunning || !hasNodes}
+                className={cn(
+                  "gap-1.5",
+                  isIdle && hasNodes && "bg-green-600 hover:bg-green-700"
+                )}
+              >
+                <Play className="w-4 h-4" />
+                {isPaused ? "Resume" : "Run"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {isPaused ? "Resume execution" : "Start workflow execution"}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Pause Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
                 variant="outline"
-                className="border-red-200 text-red-600 hover:bg-red-50"
-                onClick={onStop}
+                size="icon"
+                onClick={onPause}
+                disabled={!isRunning}
+                className="h-8 w-8"
               >
-                <Square className="h-4 w-4 mr-2" />
-                Stop pipeline
+                <Pause className="w-4 h-4" />
               </Button>
-            ) : (
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Pause execution</p>
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Stop Button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
-                type="button"
-                className="bg-teal-600 hover:bg-teal-700 text-white"
-                onClick={onStart}
-                disabled={!isConnected}
+                variant="outline"
+                size="icon"
+                onClick={onStop}
+                disabled={isIdle}
+                className={cn(
+                  "h-8 w-8",
+                  (isRunning || isPaused) &&
+                    "text-red-600 hover:text-red-700 hover:bg-red-50"
+                )}
               >
-                <Play className="h-4 w-4 mr-2" />
-                Start pipeline
+                <Square className="w-4 h-4" />
               </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Stop execution</p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Trigger Controls */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={triggersArmed ? "default" : "outline"}
+                size="sm"
+                onClick={triggersArmed ? onDisarm : onArm}
+                disabled={isRunning || !hasNodes}
+                className={cn(
+                  "gap-1.5",
+                  triggersArmed && "bg-blue-600 hover:bg-blue-700"
+                )}
+              >
+                {triggersArmed ? (
+                  <>
+                    <Radio className="w-4 h-4 animate-pulse" />
+                    Armed
+                  </>
+                ) : (
+                  <>
+                    <CircleOff className="w-4 h-4" />
+                    Arm Triggers
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>
+                {triggersArmed
+                  ? "Triggers are active - workflow will run when conditions are met"
+                  : "Arm triggers to enable automatic workflow execution"}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Reset Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onReset}
+              disabled={isRunning}
+              className="h-8 w-8"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Reset workflow state</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Status Indicator */}
+        <div className="flex items-center gap-2 px-2">
+          <div
+            className={cn(
+              "w-2.5 h-2.5 rounded-full transition-colors",
+              getStatusColor(),
+              isRunning && "animate-pulse"
             )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
-                    onClick={onUndo}
-                    disabled={!canUndo}
-                  >
-                    <Undo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Undo (Ctrl+Z)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
-                    onClick={onRedo}
-                    disabled={!canRedo}
-                  >
-                    <Redo2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Redo (Ctrl+Shift+Z)</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
-                    onClick={onClear}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Clear
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remove all nodes and edges</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
+          />
+          <span className="text-sm font-medium text-gray-600">
+            {getStatusText()}
+          </span>
 
-        <div className="flex flex-wrap items-center gap-3 justify-between border-t border-teal-100 pt-4">
-          <div className="flex items-center gap-3 text-xs text-gray-600">
+          {triggersArmed && isIdle && (
             <Badge
-              variant="outline"
-              className="text-xs border-gray-200 text-gray-700"
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-700"
             >
-              {nodeCount} nodes / {edgeCount} edges
+              <Zap className="w-3 h-3 mr-0.5" />
+              Listening
             </Badge>
-            <span>
-              {lastSaved
-                ? `Last saved ${new Date(lastSaved).toLocaleTimeString()}`
-                : "Not saved yet"}
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
-              onClick={handleImport}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
-              onClick={handleExport}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-gray-200 text-gray-700 hover:bg-gray-50"
-              onClick={onSave}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-          </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </TooltipProvider>
   );
-}
+};
+
+// Mini version for Panel positioning
+export const WorkflowToolbarMini = ({
+  executionState,
+  triggersArmed,
+  hasNodes,
+  onStart,
+  onPause,
+  onResume,
+  onStop,
+  onArm,
+  onDisarm,
+  onReset,
+}: WorkflowToolbarProps) => {
+  const isRunning = executionState === "running";
+  const isPaused = executionState === "paused";
+  const isIdle = executionState === "idle" || executionState === "stopped";
+
+  return (
+    <TooltipProvider>
+      <div className="flex items-center gap-1 p-1.5 bg-white/95 backdrop-blur-sm border rounded-lg shadow-md">
+        {/* Play/Pause/Stop */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={isIdle ? "default" : "ghost"}
+              size="icon"
+              onClick={isRunning ? onPause : isPaused ? onResume : onStart}
+              disabled={!hasNodes}
+              className={cn(
+                "h-7 w-7",
+                isIdle &&
+                  hasNodes &&
+                  "bg-green-600 hover:bg-green-700 text-white"
+              )}
+            >
+              {isRunning ? (
+                <Pause className="w-3.5 h-3.5" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{isRunning ? "Pause" : isPaused ? "Resume" : "Run"}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onStop}
+              disabled={isIdle}
+              className="h-7 w-7"
+            >
+              <Square className="w-3.5 h-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Stop</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-4 bg-gray-200" />
+
+        {/* Arm Triggers */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant={triggersArmed ? "default" : "ghost"}
+              size="icon"
+              onClick={triggersArmed ? onDisarm : onArm}
+              disabled={isRunning || !hasNodes}
+              className={cn(
+                "h-7 w-7",
+                triggersArmed && "bg-blue-600 hover:bg-blue-700 text-white"
+              )}
+            >
+              {triggersArmed ? (
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+              ) : (
+                <CircleOff className="w-3.5 h-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{triggersArmed ? "Disarm Triggers" : "Arm Triggers"}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <div className="w-px h-4 bg-gray-200" />
+
+        {/* Reset */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onReset}
+              disabled={isRunning}
+              className="h-7 w-7"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>Reset</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Status LED */}
+        <div
+          className={cn(
+            "w-2 h-2 rounded-full ml-1",
+            executionState === "running" && "bg-yellow-500 animate-pulse",
+            executionState === "paused" && "bg-orange-500",
+            executionState === "stopped" && "bg-red-500",
+            isIdle && triggersArmed && "bg-blue-500 animate-pulse",
+            isIdle && !triggersArmed && "bg-gray-400"
+          )}
+        />
+      </div>
+    </TooltipProvider>
+  );
+};
+
+export default WorkflowToolbar;

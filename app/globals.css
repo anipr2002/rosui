@@ -381,3 +381,32 @@ h1[data-localization-key="userProfile.navbar.title"] {
 [data-fd-banner] {
   display: none !important;
 }
+
+/* Workflow Node Animations */
+@keyframes ping-once {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 100%; }
+  100% { width: 0%; }
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-ping-once {
+  animation: ping-once 0.5s ease-out forwards;
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
+}
+
+.animate-pulse-border {
+  animation: pulse-border 1s ease-in-out infinite;
+}
